@@ -45,6 +45,12 @@
             item.textContent = msg;
             messages.appendChild(item);
             messages.scrollTop = messages.scrollHeight; // Auto-scroll
+			if (window.AndroidBridge) {
+                // 'AndroidBridge' is the name we will define in Kotlin
+                window.AndroidBridge.onResponseReceived(msg);
+            } else {
+                console.log("Not running inside the Android WebView");
+            }
         });
 		// 1. Function called by Android Kotlin code
         function receiveMessageFromAndroid(message) {
