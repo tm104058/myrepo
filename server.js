@@ -18,6 +18,12 @@ io.on('connection', (socket) => {
     // Listen for incoming messages from a specific client
     socket.on('chat message', (msg) => {
         // Broadcast the message to all connected browsers
+		if (window.AndroidBridge) {
+                // 'AndroidBridge' is the name we will define in Kotlin
+                window.AndroidBridge.onResponseReceived("mssg from server.js");
+            } else {
+				console.log("Not running inside the Android WebView");
+        }
         io.emit('chat message', msg);
     });
 
