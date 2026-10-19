@@ -22,7 +22,7 @@ io.on('connection', (socket) => {
     });*/
 	// Simulate sending a response from the chat webapp 3 seconds after connecting
     setTimeout(() => {
-        socket.emit('chat message', msg);
+        io.emit('chat message', msg);
     }, 3000);
 
     socket.on('disconnect', () => {
