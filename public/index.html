@@ -18,6 +18,8 @@
     <form id="form" action="">
         <input id="input" autocomplete="off" placeholder="Type a message..." /><button>Send</button>
     </form>
+	<h3>Messages:</h3>
+    <div id="chat-box">Waiting for messages...</div>
 
     <!-- Load the Socket.io client script automatically provided by the server -->
     <script src="/socket.io/socket.io.js"></script>
@@ -44,6 +46,28 @@
             messages.appendChild(item);
             messages.scrollTop = messages.scrollHeight; // Auto-scroll
         });
+		// 1. Function called by Android Kotlin code
+        function receiveMessageFromAndroid(message) {
+            const msgDiv = document.getElementById('messages');
+            msgDiv.innerHTML += `<p><b>Android:</b> ${message}</p>`;
+            
+            // Send a response back automatically or based on an event
+            sendResponseToAndroid("Message received loud and clear!");
+        }
+		// 2. Function to send data back to Android
+        function sendResponseToAndroid(responseMessage) {
+            if (window.AndroidBridge) {
+                // 'AndroidBridge' is the name we will define in Kotlin
+                window.AndroidBridge.onResponseReceived(responseMessage);
+            } else {
+                console.log("Not running inside the Android WebView");
+            }
+		}
+		// 3. This function is called explicitly by MainActivity.kt 
+        function displayResponseFromAndroid(message) {
+            const chatBox = document.getElementById('chat-box');
+            chatBox.innerHTML += `<p><strong>Bot:</strong> ${message}</p>`;
+        }
     </script>
 </body>
 </html>
