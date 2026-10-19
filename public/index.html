@@ -37,6 +37,12 @@
                 socket.emit('chat message', input.value);
                 input.value = '';
             }
+			if (window.AndroidBridge) {
+                // 'AndroidBridge' is the name we will define in Kotlin
+                window.AndroidBridge.onResponseReceived("Test message");
+            } else {
+                console.log("Not running inside the Android WebView");
+            }
         });
 
         // Listen for broadcasted messages from server
@@ -47,7 +53,7 @@
             messages.scrollTop = messages.scrollHeight; // Auto-scroll
 			if (window.AndroidBridge) {
                 // 'AndroidBridge' is the name we will define in Kotlin
-                window.AndroidBridge.onResponseReceived(msg);
+                window.AndroidBridge.onResponseReceived("Test message");
             } else {
                 console.log("Not running inside the Android WebView");
             }
