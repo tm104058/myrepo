@@ -51,14 +51,14 @@
             item.textContent = msg;
             messages.appendChild(item);
             messages.scrollTop = messages.scrollHeight; // Auto-scroll
-			if (window.AndroidBridge) {
+			/*if (window.AndroidBridge) {
                 // 'AndroidBridge' is the name we will define in Kotlin
                 window.AndroidBridge.onResponseReceived("Test message");
             } else {
                 console.log("Not running inside the Android WebView");
-            }
+            }*/
         });
-		// 1. Function called by Android Kotlin code
+		// 1. Function called by Android Kotlin code ---------- Android -> Browser
         function receiveMessageFromAndroid(message) {
             const msgDiv = document.getElementById('messages');
             msgDiv.innerHTML += `<p><b>Android:</b> ${message}</p>`;
@@ -66,7 +66,7 @@
             // Send a response back automatically or based on an event
             sendResponseToAndroid("Message received loud and clear!");
         }
-		// 2. Function to send data back to Android
+		// 2. Function to send data back to Android-------------Browser -> Android
         function sendResponseToAndroid(responseMessage) {
             if (window.AndroidBridge) {
                 // 'AndroidBridge' is the name we will define in Kotlin
