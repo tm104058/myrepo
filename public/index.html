@@ -50,6 +50,8 @@
 
 			// Send through the existing Socket.IO connection.
 			socket.emit("chat message", message);
+			sendResponseToAndroid("Message sent to the chat server.");
+
         }
 		// 2. Function to send data back to Android-------------Browser -> Android
         function sendResponseToAndroid(responseMessage) {
