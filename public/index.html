@@ -68,6 +68,10 @@
             item.textContent = msg;
             messages.appendChild(item);
             messages.scrollTop = messages.scrollHeight; // Auto-scroll
+			
+			if (window.AndroidBridge) {
+				window.AndroidBridge.onResponseReceived(String(msg));
+			}
         });
     </script>
 </body>
