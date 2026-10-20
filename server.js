@@ -1,11 +1,17 @@
 const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
-//const io = require('socket.io')(http);
-const io = require('socket.io')(http, {
-  cors: { origin: "*" } // Allows the Android WebView to connect safely
+//Commenting below and adding new to fix android apk issue which is working in emulator 
+//const io = require('socket.io')(http, {
+//  cors: { origin: "*" } // Allows the Android WebView to connect safely
+//});
+const { Server } = require("socket.io");
+const io = new Server(http, {
+	cors: {
+		origin: "*"
+	},
+	transports: ["polling", "websocket"]
 });
-
 const PORT = process.env.PORT || 3000;
 
 // Serve static frontend files from a folder named "public"
