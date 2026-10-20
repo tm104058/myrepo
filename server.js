@@ -29,8 +29,8 @@ io.on('connection', (socket) => {
             sender: 'Android Device',
             message: data.message,
             timestamp: new Date()
-    });
-
+		});
+	});
     socket.on('disconnect', () => {
         console.log('User disconnected');
     });
