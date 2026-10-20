@@ -39,11 +39,7 @@
 
 		// 1. Function called by Android Kotlin code ---------- Android -> Browser
         function receiveMessageFromAndroid(message) {
-            //const msgDiv = document.getElementById('messages');
-            //msgDiv.innerHTML += `<p><b>Android:</b> ${message}</p>`;
-            
-            // Send a response back automatically or based on an event
-            //sendResponseToAndroid("Message received loud and clear!");
+
 			if (typeof message !== "string" || !message.trim()) {
 				return;
 			}
@@ -62,8 +58,8 @@
                 console.log("Not running inside the Android WebView");
             }
 		}
-		// Listen for broadcasted messages from server
-        socket.on('chat message', (msg) => {
+		// Listen for broadcasted messages from server-- Commenting to fix receiving issue from browser to android-testing
+       /* socket.on('chat message', (msg) => {
             const item = document.createElement('li');
             item.textContent = msg;
             messages.appendChild(item);
@@ -72,7 +68,34 @@
 			if (window.AndroidBridge) {
 				window.AndroidBridge.onResponseReceived(String(msg));
 			}
-        });
+        });*/
+		
+		socket.on("connect", () => {
+			console.log("Socket.IO connected:", socket.id);
+		});
+
+		socket.on("connect_error", (error) => {
+			console.error("Socket.IO connection error:", error.message);
+		});
+
+		socket.on("chat message", (msg) => {
+			console.log("Received from server:", msg);
+
+			// Display message in the WebView chat list.
+			const item = document.createElement("li");
+			item.textContent = String(msg);
+			messages.appendChild(item);
+			messages.scrollTop = messages.scrollHeight;
+
+			// Forward received message to native Android.
+			if (window.AndroidBridge) {
+				window.AndroidBridge.onResponseReceived(String(msg));
+				console.log("Message forwarded to AndroidBridge");
+			} else {
+				console.log("AndroidBridge is unavailable");
+			}
+		});
+
     </script>
 </body>
 </html>
