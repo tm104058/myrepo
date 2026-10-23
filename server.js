@@ -1,10 +1,7 @@
 const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
-//Commenting below and adding new to fix android apk issue which is working in emulator 
-//const io = require('socket.io')(http, {
-//  cors: { origin: "*" } // Allows the Android WebView to connect safely
-//});
+
 const { Server } = require("socket.io");
 const io = new Server(http, {
 	cors: {
