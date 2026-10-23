@@ -1,101 +1,197 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Chat App</title>
-    <style>
-        body { font-family: sans-serif; margin: 20px; display: flex; flex-direction: column; height: 85vh; }
-        #messages { list-style-type: none; margin: 0; padding: 0; flex-grow: 1; overflow-y: auto; border: 1px solid #ccc; margin-bottom: 10px; }
-        #messages li { padding: 8px; margin-bottom: 4px; background: #f4f4f4; border-radius: 4px; }
-        #form { display: flex; }
-        #input { flex-grow: 1; padding: 10px; border: 1px solid #ccc; }
-        button { padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Live Chat App</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 20px;
+      display: flex;
+      flex-direction: column;
+      height: 85vh;
+    }
+    input {
+      padding: 10px;
+      margin: 4px 0;
+      box-sizing: border-box;
+      max-width: 100%;
+    }
+    button {
+      padding: 10px 16px;
+      background: #007bff;
+      color: white;
+      border: 0;
+      cursor: pointer;
+      margin: 4px;
+    }
+    #auth input { display: block; width: 100%; }
+    #messages {
+      list-style: none;
+      margin: 0 0 10px;
+      padding: 0;
+      flex-grow: 1;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+    }
+    #messages li {
+      padding: 8px;
+      margin: 4px;
+      background: #f4f4f4;
+      border-radius: 4px;
+      overflow-wrap: anywhere;
+    }
+    #form { display: flex; }
+    #input { flex-grow: 1; min-width: 0; }
+    #chat, #auth { max-width: 600px; width: 100%; margin: 0 auto; }
+    #status { white-space: pre-wrap; }
+  </style>
 </head>
 <body>
+  <section id="auth">
+    <h2>Chat account</h2>
+    <input id="username" autocomplete="username"
+           placeholder="Username (3-24 characters)">
+    <input id="password" type="password"
+           autocomplete="current-password" placeholder="Password">
+    <button id="login">Log in</button>
+    <button id="register">Create account</button>
+    <p id="status" role="status"></p>
+  </section>
+
+  <section id="chat" hidden>
+    <p>Logged in as <strong id="currentUser"></strong>
+      <button id="logout">Log out</button>
+    </p>
     <ul id="messages"></ul>
-    <form id="form" action="">
-        <input id="input" autocomplete="off" placeholder="Type a message..." /><button>Send</button>
+    <form id="form">
+      <input id="input" autocomplete="off"
+             placeholder="Type a message..." maxlength="2000" required>
+      <button type="submit">Send</button>
     </form>
+  </section>
 
-    <!-- Load the Socket.io client script automatically provided by the server -->
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        const socket = io();
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const auth = document.getElementById("auth");
+    const chat = document.getElementById("chat");
+    const status = document.getElementById("status");
+    const usernameInput = document.getElementById("username");
+    const passwordInput = document.getElementById("password");
+    const messages = document.getElementById("messages");
+    const input = document.getElementById("input");
 
-        const form = document.getElementById('form');
-        const input = document.getElementById('input');
-        const messages = document.getElementById('messages');
+    // Do not connect until the server confirms authentication.
+    const socket = io({ autoConnect: false });
 
-        // Send message to server when form is submitted
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            if (input.value) {
-                socket.emit('chat message', input.value);
-                input.value = '';
-            }
+    async function api(path, body) {
+      const response = await fetch(path, {
+        method: body ? "POST" : "GET",
+        credentials: "same-origin",
+        headers: body ? { "Content-Type": "application/json" } : {},
+        body: body ? JSON.stringify(body) : undefined
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.error || "Request failed");
+      }
+
+      return data;
+    }
+
+    function showChat(user) {
+      auth.hidden = true;
+      chat.hidden = false;
+      document.getElementById("currentUser").textContent = user.username;
+
+      if (!socket.connected) socket.connect();
+    }
+
+    async function authenticate(action) {
+      status.textContent = "";
+
+      try {
+        const user = await api("/api/" + action, {
+          username: usernameInput.value.trim(),
+          password: passwordInput.value
         });
 
-		// 1. Function called by Android Kotlin code ---------- Android -> Browser
-        function receiveMessageFromAndroid(message) {
+        passwordInput.value = "";
+        showChat(user);
+      } catch (err) {
+        status.textContent = err.message;
+      }
+    }
 
-			if (typeof message !== "string" || !message.trim()) {
-				return;
-			}
+    document.getElementById("login").onclick = () => authenticate("login");
+    document.getElementById("register").onclick = () => authenticate("register");
 
-			// Send through the existing Socket.IO connection.
-			socket.emit("chat message", message);
-			sendResponseToAndroid("Message sent to the chat server.");
+    document.getElementById("logout").onclick = async () => {
+      try {
+        await api("/api/logout", {});
+        socket.disconnect();
+        messages.replaceChildren();
+        chat.hidden = true;
+        auth.hidden = false;
+        status.textContent = "Logged out.";
+      } catch (err) {
+        status.textContent = err.message;
+      }
+    };
 
+    document.getElementById("form").addEventListener("submit", (event) => {
+      event.preventDefault();
+
+      const text = input.value.trim();
+      if (text && socket.connected) {
+        socket.emit("chat message", text);
+        input.value = "";
+      }
+    });
+
+    socket.on("connect_error", (err) => {
+      status.textContent = "Chat connection failed: " + err.message;
+    });
+
+    socket.on("chat message", (message) => {
+      const item = document.createElement("li");
+      item.textContent = message.username + ": " + message.text;
+      messages.appendChild(item);
+      messages.scrollTop = messages.scrollHeight;
+
+      if (window.AndroidBridge) {
+        window.AndroidBridge.onResponseReceived(item.textContent);
+      }
+    });
+
+    // Restore the session on page load.
+    (async () => {
+      try {
+        const user = await api("/api/me");
+        showChat(user);
+      } catch (_) {
+        auth.hidden = false;
+        chat.hidden = true;
+      }
+    })();
+
+    // Preserve the existing Kotlin -> JavaScript bridge.
+    function receiveMessageFromAndroid(message) {
+      if (typeof message !== "string" || !message.trim()) return;
+
+      if (!socket.connected) {
+        if (window.AndroidBridge) {
+          window.AndroidBridge.onResponseReceived("Please log in first.");
         }
-		// 2. Function to send data back to Android-------------Browser -> Android
-        function sendResponseToAndroid(responseMessage) {
-            if (window.AndroidBridge) {
-                // 'AndroidBridge' is the name we will define in Kotlin
-                window.AndroidBridge.onResponseReceived(responseMessage);
-            } else {
-                console.log("Not running inside the Android WebView");
-            }
-		}
-		// Listen for broadcasted messages from server-- Commenting to fix receiving issue from browser to android-testing
-       /* socket.on('chat message', (msg) => {
-            const item = document.createElement('li');
-            item.textContent = msg;
-            messages.appendChild(item);
-            messages.scrollTop = messages.scrollHeight; // Auto-scroll
-			
-			if (window.AndroidBridge) {
-				window.AndroidBridge.onResponseReceived(String(msg));
-			}
-        });*/
-		
-		socket.on("connect", () => {
-			console.log("Socket.IO connected:", socket.id);
-		});
+        return;
+      }
 
-		socket.on("connect_error", (error) => {
-			console.error("Socket.IO connection error:", error.message);
-		});
-
-		socket.on("chat message", (msg) => {
-			console.log("Received from server:", msg);
-
-			// Display message in the WebView chat list.
-			const item = document.createElement("li");
-			item.textContent = String(msg);
-			messages.appendChild(item);
-			messages.scrollTop = messages.scrollHeight;
-
-			// Forward received message to native Android.
-			if (window.AndroidBridge) {
-				window.AndroidBridge.onResponseReceived(String(msg));
-				console.log("Message forwarded to AndroidBridge");
-			} else {
-				console.log("AndroidBridge is unavailable");
-			}
-		});
-
-    </script>
+      socket.emit("chat message", message);
+    }
+  </script>
 </body>
 </html>
