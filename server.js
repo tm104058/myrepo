@@ -5,16 +5,17 @@ const express = require("express");
 const http = require("http");
 const mongoose = require("mongoose");
 const session = require("express-session");
-const MongoStore = require("connect-mongo");
+//const MongoStore = require("connect-mongo");
 const bcrypt = require("bcrypt");
 const { Server } = require("socket.io");
+const MongoStoreModule = require("connect-mongo");
+const MongoStore = MongoStoreModule.default || MongoStoreModule;
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   transports: ["polling", "websocket"]
 });
-
 const PORT = process.env.PORT || 3000;
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -287,8 +288,16 @@ app.use((err, req, res, next) => {
 });
 
 async function start() {
-  await mongoose.connect(process.env.MONGODB_URI);
-  console.log("MongoDB connected successfully");
+  await mongoose.connect(process.env.MONGODB_URI, , {
+      : 15000,
+    });
+
+    console.log("MongoDB connected successfully");
+    await mongoose.disconnect();
+  } catch (error) {
+    console.error("MongoDB connection failed:", error.message);
+    process.exitCode = 1;
+  }
 
   server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
