@@ -290,7 +290,7 @@ app.use((err, req, res, next) => {
 async function start() {
 	try {
     await mongoose.connect(process.env.MONGODB_URI, {
-      : 15000,
+     serverSelectionTimeoutMS : 15000,
     });
 
     console.log("MongoDB connected successfully");
