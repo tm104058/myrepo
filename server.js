@@ -294,7 +294,6 @@ async function start() {
     });
 
     console.log("MongoDB connected successfully");
-    await mongoose.disconnect();
   } catch (error) {
     console.error("MongoDB connection failed:", error.message);
     process.exitCode = 1;
