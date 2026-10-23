@@ -169,7 +169,7 @@
     });
 
     // Restore the session on page load.
-    (async () => {
+    /*(async () => {
       try {
         const user = await api("/api/me");
         showChat(user);
@@ -177,7 +177,18 @@
         auth.hidden = false;
         chat.hidden = true;
       }
-    })();
+    })();*/
+	// Restore the session on page load.
+	(async () => {
+	  try {
+		const user = await api("/api/me");
+		showChat(user);
+	  } catch (err) {
+		console.error("Session restoration failed:", err);
+		auth.hidden = false;
+		chat.hidden = true;
+	  }
+	})();
 
     // Preserve the existing Kotlin -> JavaScript bridge.
     function receiveMessageFromAndroid(message) {
