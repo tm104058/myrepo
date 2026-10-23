@@ -288,7 +288,7 @@ app.use((err, req, res, next) => {
 });
 
 async function start() {
-  await mongoose.connect(process.env.MONGODB_URI, , {
+  await mongoose.connect(process.env.MONGODB_URI, {
       : 15000,
     });
 
