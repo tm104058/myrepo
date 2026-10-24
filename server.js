@@ -10,6 +10,12 @@ const bcrypt = require("bcrypt");
 const { Server } = require("socket.io");
 const MongoStoreModule = require("connect-mongo");
 const MongoStore = MongoStoreModule.default || MongoStoreModule;
+//File transfer
+const multer = require('multer');
+//const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+// 1. Cloudinary Configuration (Ensure these match your .env file)
+const cloudinary = require("./config/cloudinary");
 
 const app = express();
 const server = http.createServer(app);
@@ -142,8 +148,8 @@ app.post("/api/register", async (req, res, next) => {
       }
       throw err;
     }
-
-    req.session.regenerate((err) => {
+	//TEMP START------------>
+    /*req.session.regenerate((err) => {
       if (err) return next(err);
 
       req.session.user = {
@@ -159,6 +165,22 @@ app.post("/api/register", async (req, res, next) => {
         });
       });
     });
+	*/
+	req.session.user = {
+	  id: user._id.toString(),
+	  username: user.username
+	};
+
+	req.session.save((saveErr) => {
+	  if (saveErr) return next(saveErr);
+
+
+
+	  res.json({
+		username: user.username
+	  });
+	});
+	//TEMP END------>
   } catch (err) {
     next(err);
   }
@@ -167,6 +189,7 @@ app.post("/api/register", async (req, res, next) => {
 // Log in
 app.post("/api/login", async (req, res, next) => {
   try {
+	console.log("LOGIN ROUTE HIT");
     const { username, password } = req.body || {};
 
     if (
@@ -196,11 +219,12 @@ app.post("/api/login", async (req, res, next) => {
       req.session.user = {
         id: user._id.toString(),
         username: user.username
-      };
-
+      };	
       req.session.save((saveErr) => {
-        if (saveErr) return next(saveErr);
-
+        if (saveErr) {
+			console.error("SESSION SAVE FAILED:", saveErr);
+			return next(saveErr);
+		}
         res.json({
           username: user.username
         });
@@ -244,7 +268,8 @@ app.post("/api/logout", requireLogin, (req, res, next) => {
 });
 
 // Authenticate every new Socket.IO connection
-io.use((socket, next) => {
+//TEMP START-------------->
+/*io.use((socket, next) => {
   const user = socket.request.session?.user;
 
   if (!user?.id || !user?.username) {
@@ -253,8 +278,19 @@ io.use((socket, next) => {
 
   socket.data.user = user;
   next();
-});
+});*/
+io.use((socket, next) => {
+  const req = socket.request;
+  const user = req.session?.user;
 
+  if (!user?.id || !user?.username) {
+    return next(new Error("Authentication required"));
+  }
+
+  socket.data.user = user;
+  next();
+});
+//TEMp END-------------->
 io.on("connection", (socket) => {
   console.log("Authenticated user connected:", socket.data.user.username);
 
@@ -308,3 +344,125 @@ start().catch((err) => {
   console.error("Server startup failed:", err.message);
   process.exit(1);
 });
+
+//File transfer
+// 2. Setup Multer Storage for Cloudinary
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: async (req, file) => {
+    // Automatically determine resource type (image, video, or raw file like PDF/docs)
+    let resource_type = 'auto'; 
+    
+    return {
+      folder: 'chat_uploads', // Folder name in your Cloudinary media library
+      resource_type: resource_type,
+      public_id: Date.now() + '-' + file.originalname.replace(/[^a-zA-Z0-9.]/g, "_")
+    };
+  },
+});
+
+const upload = multer({ storage: storage });
+
+// 3. File Upload Route
+/*app.post('/api/upload',requireLogin, upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // req.file.path contains the secure Cloudinary URL
+    // req.file.filename contains the public_id
+    res.json({
+      success: true,
+      fileUrl: req.file.path, 
+      fileName: req.file.originalname,
+      fileType: req.file.mimetype,
+	  publicId: req.file.filename,
+	  senderId: req.session.user._id
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Upload failed', success: false, details: error.message });
+  }
+});*/
+// Added below code and comented above to test error
+app.post('/api/upload', requireLogin, (req, res) => {
+  upload.single('file')(req, res, (err) => {
+    if (err) {
+      console.error('Multer/Cloudinary upload error:', err);
+
+      return res.status(500).json({
+        success: false,
+        error: err.message || 'Upload middleware failed'
+      });
+    }
+
+    (async () => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({
+            success: false,
+            error: 'No file uploaded'
+          });
+        }
+
+        console.log('Cloudinary upload successful:');
+
+        return res.json({
+          success: true,
+          fileUrl: req.file.path,
+          fileName: req.file.originalname,
+          fileType: req.file.mimetype,
+          publicId: req.file.filename
+        });
+      } catch (error) {
+        console.error('Upload route error:', error);
+
+        return res.status(500).json({
+          success: false,
+          error: 'Upload failed'
+        });
+      }
+    })();
+  });
+});
+
+// 4. Retrive file 
+app.get(
+  '/api/files/:fileId',
+  requireLogin,
+  async (req, res) => {
+    try {
+      const file = await File.findById(req.params.fileId);
+
+      if (!file) {
+        return res.status(404).json({
+          error: 'File not found'
+        });
+      }
+
+      // Replace this with your actual conversation membership check.
+      const conversation = await Conversation.findOne({
+        _id: file.conversationId,
+        participants: req.session.user._id
+      });
+
+      if (!conversation) {
+        return res.status(403).json({
+          error: 'You are not allowed to access this file'
+        });
+      }
+
+      // Return the file only after authorization.
+      res.json({
+        success: true,
+        fileName: file.fileName,
+        fileType: file.fileType,
+        publicId: file.publicId
+      });
+    } catch (error) {
+      res.status(500).json({
+        error: 'Unable to retrieve file'
+      });
+    }
+  }
+);

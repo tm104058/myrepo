@@ -67,8 +67,13 @@
     </p>
     <ul id="messages"></ul>
     <form id="form">
+	<!-- The "+" or Upload Button -->
+		<button id="upload-btn" type="button" style="font-size: 20px; cursor: pointer;">➕</button>
+		<!-- Hidden File Input -->
+		<input type="file" id="file-input" style="display: none;" />
       <input id="input" autocomplete="off"
              placeholder="Type a message..." maxlength="2000" required>
+		
       <button type="submit">Send</button>
     </form>
   </section>
@@ -96,10 +101,14 @@
 
       const data = await response.json().catch(() => ({}));
 
-      if (!response.ok) {
+      /*if (!response.ok) {
         throw new Error(data.error || "Request failed");
-      }
-
+      }Commenting and adding relacement to fix authentication error when page loads*/
+	if (!response.ok) {
+	  const error = new Error(data.error || "Request failed");
+	  error.status = response.status;
+	  throw error;
+	}
       return data;
     }
 
@@ -156,6 +165,17 @@
     socket.on("connect_error", (err) => {
       status.textContent = "Chat connection failed: " + err.message;
     });
+	socket.on("connect", () => {
+	  console.log("Socket connected:");//, socket.id);
+	});
+
+	socket.on("disconnect", (reason) => {
+	  console.log("Socket disconnected:", reason);
+	});
+
+	socket.on("connect_error", (err) => {
+	  console.error("Socket connection error:", err.message);
+	});
 
     socket.on("chat message", (message) => {
       const item = document.createElement("li");
@@ -184,7 +204,9 @@
 		const user = await api("/api/me");
 		showChat(user);
 	  } catch (err) {
-		console.error("Session restoration failed:", err);
+	  if (err.status !== 401) {// If block to fix error when page loads first time
+			console.error("Session restoration failed:", err);
+		}
 		auth.hidden = false;
 		chat.hidden = true;
 	  }
@@ -203,6 +225,100 @@
 
       socket.emit("chat message", message);
     }
+	
+	// File upload v2- New project starts
+	const uploadBtn = document.getElementById('upload-btn');
+	const fileInput = document.getElementById('file-input');
+
+	// 1. Trigger the hidden file input when the "+" button is clicked
+	uploadBtn.addEventListener('click', () => {
+	  fileInput.click();
+	});
+	
+	// 2. Handle file selection and upload automatically
+	fileInput.addEventListener('change', async (event) => {
+	  const file = event.target.files[0];
+	  if (!file) return;
+
+	  // Prepare form data
+	  const formData = new FormData();
+	  formData.append('file', file);
+
+	  try {
+		// Optional: Show a loading/uploading state in your UI here
+		uploadBtn.textContent = '⏳'; 
+
+		// Send file to Node.js backend
+		const response = await fetch('/api/upload', {
+		  method: 'POST',
+		  credentials: 'same-origin',
+		  body: formData // Content-Type header is automatically set for FormData
+		});
+
+		const data = await response.json().catch(() => ({}));
+		var fileMsgToChat;
+		// Session missing or expired
+		if (response.status === 401) {
+		  alert('Please log in before uploading files.');
+		  return;
+		}
+
+		if (!response.ok || !data.success) {
+		  throw new Error(data.error || 'Upload failed.');
+		}
+		if (data.success) {
+		  fileMsgToChat = data.fileName + ' sent at url ' + data.fileUrl;
+		  // 3. Send the fileUrl to your chat database / WebSocket (Socket.io)
+			sendMessageToChat(
+			  data.fileUrl,
+			  data.fileType,
+			  data.fileName
+			);
+			//Tapan Testing-->
+			if (socket.connected) {
+			socket.timeout(5000).emit(
+				"chat message",
+				fileMsgToChat,
+				(err, response) => {
+					if (err) {
+						console.error("Server timeout or no acknowledgment:", err);
+						return;
+					}
+
+					if (response?.success) {
+						console.log("Message successfully processed");
+					} else {
+						console.error("Server rejected message:", response?.error);
+						alert(response?.error || "Failed to send message");
+					}
+				}
+			);
+		} else {
+			console.error("Socket disconnected");
+			alert("You are offline. Please reconnect and try again.");
+		}
+			//End Testing---->
+		} else {
+		  alert('Upload failed.');
+		}
+	  } catch (error) {
+		console.error('Error uploading file:', error);
+	  } finally {
+		// Reset the icon and input
+		uploadBtn.textContent = '➕';
+		fileInput.value = ''; 
+	  }
+	});
+
+	// Example function to emit/save your message
+	function sendMessageToChat(fileUrl, fileType) {
+	  // If using Socket.io, emit it:
+	  // socket.emit('chatMessage', { type: 'file', url: fileUrl, fileType: fileType });
+	  
+	  // Or append it straight to your UI for testing:
+	  console.log('File ready:', { fileUrl, fileType });
+	}
+	
   </script>
 </body>
 </html>
