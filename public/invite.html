@@ -1,0 +1,172 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#2563eb">
+  <title>Join MyChat</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: #f1f5f9;
+      font-family: Arial, sans-serif;
+      color: #172033;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 420px;
+      padding: 32px 24px;
+      background: white;
+      border-radius: 18px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, .08);
+      text-align: center;
+    }
+
+    .logo {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+
+    h1 { margin: 0 0 12px; }
+
+    p {
+      color: #64748b;
+      line-height: 1.6;
+    }
+
+    .button {
+      display: block;
+      margin-top: 18px;
+      padding: 14px;
+      border-radius: 10px;
+      background: #2563eb;
+      color: white;
+      font-weight: bold;
+      text-decoration: none;
+    }
+
+    .secondary {
+      background: #e2e8f0;
+      color: #172033;
+    }
+
+    #status { margin-top: 18px; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="logo">💬</div>
+
+    <h1>Join MyChat</h1>
+
+    <p id="status" role="status" aria-live="polite">
+      Checking your invitation...
+    </p>
+
+    <section id="validInvite" hidden>
+      <p id="inviter"></p>
+      <p>
+        Join your friends on MyChat. Install the app and
+        create your own account to start chatting.
+      </p>
+
+      <a
+        id="downloadButton"
+        class="button"
+        href="#"
+        hidden
+      >
+        Download MyChat
+      </a>
+
+      <a
+        id="webButton"
+        class="button secondary"
+        href="/"
+      >
+        Open Chat Website
+      </a>
+    </section>
+
+    <section id="invalidInvite" hidden>
+      <p>
+        This invitation may have expired or the link may
+        be incorrect. Ask your friend to send a new invite.
+      </p>
+      <a class="button secondary" href="/">
+        Visit MyChat
+      </a>
+    </section>
+  </main>
+
+  <script>
+    // Replace with your real Google Play listing URL.
+    const PLAY_STORE_URL =
+      "https://play.google.com/store/apps/details?id=YOUR_REAL_PACKAGE";
+
+    async function checkInvitation() {
+      const status = document.getElementById("status");
+      const validSection = document.getElementById("validInvite");
+      const invalidSection = document.getElementById("invalidInvite");
+
+      // Read the token from /invite/:token.
+      const parts = window.location.pathname.split("/");
+      const token = parts[parts.length - 1];
+
+      if (!/^[a-f0-9]{64}$/i.test(token)) {
+        status.textContent = "This invitation link is invalid.";
+        invalidSection.hidden = false;
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          "/api/invitations/" + encodeURIComponent(token),
+          { headers: { "Accept": "application/json" } }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok || !data.valid) {
+          throw new Error("Invitation invalid");
+        }
+
+        status.textContent = "Your invitation is valid!";
+        validSection.hidden = false;
+
+        const inviter = document.getElementById("inviter");
+
+        inviter.textContent = data.inviterUsername
+          ? data.inviterUsername + " invited you to join MyChat."
+          : "A friend invited you to join MyChat.";
+
+        // Show the Play Store button only after configuring
+        // your actual application package ID.
+        if (!PLAY_STORE_URL.includes("YOUR_REAL_PACKAGE")) {
+          const downloadButton =
+            document.getElementById("downloadButton");
+
+          downloadButton.href = PLAY_STORE_URL;
+          downloadButton.hidden = false;
+        }
+      } catch (error) {
+        status.textContent =
+          "We could not verify this invitation.";
+        invalidSection.hidden = false;
+      }
+    }
+
+    checkInvitation();
+  </script>
+</body>
+</html>

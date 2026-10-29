@@ -77,7 +77,19 @@
       <button type="submit">Send</button>
     </form>
   </section>
+	<section id="invite-section">
+  <h2>Invite a friend</h2>
 
+  <p>
+    Invite someone to join your chat app using SMS.
+  </p>
+
+  <button id="invite-contact-btn" type="button">
+    Choose contact
+  </button>
+
+  <p id="invite-status" role="status"></p>
+</section>
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const auth = document.getElementById("auth");
@@ -188,16 +200,7 @@
       }
     });
 
-    // Restore the session on page load.
-    /*(async () => {
-      try {
-        const user = await api("/api/me");
-        showChat(user);
-      } catch (_) {
-        auth.hidden = false;
-        chat.hidden = true;
-      }
-    })();*/
+
 	// Restore the session on page load.
 	(async () => {
 	  try {
@@ -312,13 +315,75 @@
 
 	// Example function to emit/save your message
 	function sendMessageToChat(fileUrl, fileType) {
-	  // If using Socket.io, emit it:
-	  // socket.emit('chatMessage', { type: 'file', url: fileUrl, fileType: fileType });
-	  
+
 	  // Or append it straight to your UI for testing:
 	  console.log('File ready:', { fileUrl, fileType });
 	}
 	
+	
+	//Invite users to APp start
+  const inviteButton = document.getElementById("invite-contact-btn");
+  const inviteStatus = document.getElementById("invite-status");
+
+  inviteButton.addEventListener("click", function () {
+    if (
+      !window.AndroidBridge ||
+      typeof window.AndroidBridge.pickContact !== "function"
+    ) {
+      inviteStatus.textContent =
+        "Contact selection is available in the Android app.";
+      return;
+    }
+
+    inviteStatus.textContent = "Choose a contact...";
+    window.AndroidBridge.pickContact();
+  });
+
+  // Called by Kotlin after the user selects a phone number.
+  window.onNativeContactSelected = async function (phone) {
+    inviteButton.disabled = true;
+    inviteStatus.textContent = "Creating invitation...";
+
+    try {
+      const response = await fetch("/api/invitations", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ phone })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.error || "Could not create invitation"
+        );
+      }
+
+      const message =
+        "Join me on our chat app! Use this invitation link: " +
+        result.inviteUrl;
+
+      inviteStatus.textContent = "Opening SMS app...";
+
+      if (
+        !window.AndroidBridge ||
+        typeof window.AndroidBridge.openSms !== "function"
+      ) {
+        throw new Error("Android SMS integration is unavailable");
+      }
+
+      window.AndroidBridge.openSms(phone, message);
+
+    } catch (error) {
+      inviteStatus.textContent = error.message;
+    } finally {
+      inviteButton.disabled = false;
+    }
+  };
+</script>
   </script>
 </body>
 </html>

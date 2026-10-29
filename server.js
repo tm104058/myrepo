@@ -16,6 +16,7 @@ const multer = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 // 1. Cloudinary Configuration (Ensure these match your .env file)
 const cloudinary = require("./config/cloudinary");
+const APP_BASE_URL = process.env.APP_BASE_URL;
 
 const app = express();
 const server = http.createServer(app);
@@ -56,6 +57,39 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model("User", userSchema);
 
+//MyTest
+const crypto = require("crypto");
+
+const invitationSchema = new mongoose.Schema({
+  invitedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+    index: true
+  },
+  phone: {
+    type: String,
+    required: true,
+    trim: true,
+    maxlength: 30
+  },
+  tokenHash: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  expiresAt: {
+    type: Date,
+    required: true,
+    index: { expires: 0 }
+  }
+}, { timestamps: true });
+
+const Invitation = mongoose.model(
+  "Invitation",
+  invitationSchema
+);
+
 // Persistent MongoDB session store
 const sessionMiddleware = session({
   name: "chatapp.sid",
@@ -89,6 +123,107 @@ function requireLogin(req, res, next) {
   }
   next();
 }
+//MyTest
+app.post("/api/invitations", requireLogin, async (req, res, next) => {
+  try {
+    if (!APP_BASE_URL) {
+      return res.status(500).json({
+        error: "APP_BASE_URL is not configured"
+      });
+    }
+
+    const userId = req.session.user.id;
+    const phone = String(req.body?.phone || "").trim();
+
+    if (!mongoose.isValidObjectId(userId)) {
+      return res.status(401).json({
+        error: "Please log in again"
+      });
+    }
+
+    if (!/^\+?[0-9().\-\s]{7,25}$/.test(phone)) {
+      return res.status(400).json({
+        error: "Invalid phone number"
+      });
+    }
+
+    const token = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto
+      .createHash("sha256")
+      .update(token)
+      .digest("hex");
+
+    const expiresAt = new Date(
+      Date.now() + 7 * 24 * 60 * 60 * 1000
+    );
+
+    await Invitation.create({
+      invitedBy: userId,
+      phone,
+      tokenHash,
+      expiresAt
+    });
+
+    const inviteUrl =
+      `${APP_BASE_URL.replace(/\/+$/, "")}/invite/${token}`;
+
+    res.status(201).json({
+      success: true,
+      inviteUrl,
+      expiresAt
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+const path = require("path");
+// Public web page opened from an SMS invitation
+app.get("/invite/:token", (req, res) => {
+  res.sendFile(
+    path.join(__dirname, "public", "invite.html")
+  );
+});
+// Validate a public invitation link
+app.get("/api/invitations/:token", async (req, res, next) => {
+  try {
+    const token = req.params.token;
+
+    if (!/^[a-f0-9]{64}$/i.test(token)) {
+      return res.status(400).json({
+        valid: false,
+        error: "Invalid invitation link"
+      });
+    }
+
+    const tokenHash = crypto
+      .createHash("sha256")
+      .update(token)
+      .digest("hex");
+
+    const invitation = await Invitation.findOne({
+      tokenHash,
+      expiresAt: { $gt: new Date() }
+    }).lean();
+
+    if (!invitation) {
+      return res.status(404).json({
+        valid: false,
+        error: "This invitation has expired or is invalid."
+      });
+    }
+
+    const inviter = await User.findById(invitation.invitedBy)
+      .select("username")
+      .lean();
+
+    return res.json({
+      valid: true,
+      inviterUsername: inviter?.username || null
+    });
+  } catch (err) {
+    next(err);
+  }
+});
 
 function validUsername(username) {
   return typeof username === "string" &&
@@ -148,24 +283,7 @@ app.post("/api/register", async (req, res, next) => {
       }
       throw err;
     }
-	//TEMP START------------>
-    /*req.session.regenerate((err) => {
-      if (err) return next(err);
 
-      req.session.user = {
-        id: user._id.toString(),
-        username: user.username
-      };
-
-      req.session.save((saveErr) => {
-        if (saveErr) return next(saveErr);
-
-        res.status(201).json({
-          username: user.username
-        });
-      });
-    });
-	*/
 	req.session.user = {
 	  id: user._id.toString(),
 	  username: user.username
@@ -268,17 +386,7 @@ app.post("/api/logout", requireLogin, (req, res, next) => {
 });
 
 // Authenticate every new Socket.IO connection
-//TEMP START-------------->
-/*io.use((socket, next) => {
-  const user = socket.request.session?.user;
 
-  if (!user?.id || !user?.username) {
-    return next(new Error("Authentication required"));
-  }
-
-  socket.data.user = user;
-  next();
-});*/
 io.use((socket, next) => {
   const req = socket.request;
   const user = req.session?.user;
@@ -363,27 +471,6 @@ const storage = new CloudinaryStorage({
 
 const upload = multer({ storage: storage });
 
-// 3. File Upload Route
-/*app.post('/api/upload',requireLogin, upload.single('file'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
-    }
-
-    // req.file.path contains the secure Cloudinary URL
-    // req.file.filename contains the public_id
-    res.json({
-      success: true,
-      fileUrl: req.file.path, 
-      fileName: req.file.originalname,
-      fileType: req.file.mimetype,
-	  publicId: req.file.filename,
-	  senderId: req.session.user._id
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Upload failed', success: false, details: error.message });
-  }
-});*/
 // Added below code and comented above to test error
 app.post('/api/upload', requireLogin, (req, res) => {
   upload.single('file')(req, res, (err) => {
