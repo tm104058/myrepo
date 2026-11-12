@@ -13,8 +13,14 @@ const MongoStore = MongoStoreModule.default || MongoStoreModule;
 //File transfer
 const multer = require('multer');
 
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
-
+//const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const storage = multer.memoryStorage();
+const upload = multer({
+    storage,
+    limits: {
+        fileSize: 25 * 1024 * 1024 //25 MB
+    }
+});
 const cloudinary = require("./config/cloudinary");
 
 const APP_BASE_URL = process.env.APP_BASE_URL;
@@ -1144,37 +1150,49 @@ start().catch((err) => {
   process.exit(1);
 });
 
-//File transfer
-// 2. Setup Multer Storage for Cloudinary
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: async (req, file) => {
-    // Automatically determine resource type (image, video, or raw file like PDF/docs)
-    let resource_type = 'auto'; 
-    
-    return {
-      folder: 'chat_uploads', // Folder name in your Cloudinary media library
-      resource_type: resource_type,
-      public_id: Date.now() + '-' + file.originalname.replace(/[^a-zA-Z0-9.]/g, "_")
-    };
-  },
-});
 
-const upload = multer({ storage: storage });
+//New cloudinary and multer
+const uploadToCloudinary = (file) => {
+  return new Promise((resolve, reject) => {
+    const publicId =
+      Date.now() + '-' +
+      file.originalname.replace(/[^a-zA-Z0-9.]/g, '_');
 
-// Added below code and comented above to test error
-app.post('/api/upload', requireLogin, (req, res) => {
-  upload.single('file')(req, res, (err) => {
-    if (err) {
-      console.error('Multer/Cloudinary upload error:', err);
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: 'chat_uploads',
+        resource_type: 'auto',
+        public_id: publicId
+      },
+      (error, result) => {
+        if (error) {
+          return reject(error);
+        }
 
-      return res.status(500).json({
-        success: false,
-        error: err.message || 'Upload middleware failed'
-      });
-    }
+        resolve(result);
+      }
+    );
 
-    (async () => {
+    stream.end(file.buffer);
+  });
+};
+
+app.post(
+  '/api/upload',
+  requireLogin,
+  (req, res) => {
+
+    upload.single('file')(req, res, async (err) => {
+
+      if (err) {
+        console.error('Multer upload error:', err);
+
+        return res.status(400).json({
+          success: false,
+          error: err.message || 'Upload failed'
+        });
+      }
+
       try {
         if (!req.file) {
           return res.status(400).json({
@@ -1183,27 +1201,30 @@ app.post('/api/upload', requireLogin, (req, res) => {
           });
         }
 
-        console.log('Cloudinary upload successful:');
+        // Upload file to Cloudinary
+        const result = await uploadToCloudinary(req.file);
+
+        console.log('Cloudinary upload successful');
 
         return res.json({
           success: true,
-          fileUrl: req.file.path,
+          fileUrl: result.secure_url,
           fileName: req.file.originalname,
           fileType: req.file.mimetype,
-          publicId: req.file.filename
+          publicId: result.public_id
         });
+
       } catch (error) {
-        console.error('Upload route error:', error);
+        console.error('Cloudinary upload error:', error);
 
         return res.status(500).json({
           success: false,
           error: 'Upload failed'
         });
       }
-    })();
-  });
-});
-
+    });
+  }
+);
 // 4. Retrive file 
 app.get(
   '/api/files/:fileId',
