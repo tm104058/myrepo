@@ -1,0 +1,1383 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Application</title>
+    <link rel="stylesheet" href="chatapp.css">
+
+    <style>
+        [hidden] {
+            display: none !important;
+        }
+
+        .indivisual-group,
+        .indivisual-contact {
+            cursor: pointer;
+            padding: 12px;
+            border-radius: 6px;
+            list-style: none;
+        }
+
+        .indivisual-group:hover,
+        .indivisual-contact:hover {
+            background-color: #e8e8e8;
+        }
+
+        .indivisual-group.active,
+        .indivisual-contact.active {
+            background-color: #dceaff;
+            color: #1673d1;
+        }
+
+        .dialog-content {
+            padding: 20px;
+        }
+
+        #create-group-dialog {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .dialog-content {
+            background: white;
+            border-radius: 10px;
+            min-width: 280px;
+        }
+
+        .dialog-content input {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            box-sizing: border-box;
+        }
+
+        #form {
+            display: flex;
+            gap: 8px;
+            padding: 10px;
+        }
+
+        #form input[type="text"],
+        #form input:not([type]) {
+            flex: 1;
+            min-width: 0;
+        }
+    </style>
+</head>
+
+<body>
+<section id="auth">
+
+        <h2>Welcome to ChatSpace</h2>
+
+        <p class="auth-description">
+            Connect, communicate and collaborate.
+        </p>
+
+        <input
+            id="username"
+            autocomplete="username"
+            placeholder="Username (3-24 characters)"
+            aria-label="Username"
+        >
+
+        <input
+            id="password"
+            type="password"
+            autocomplete="current-password"
+            placeholder="Password"
+            aria-label="Password"
+        >
+
+        <button id="login">
+            Log in
+        </button>
+
+        <button id="register">
+            Create account
+        </button>
+
+        <p id="status" role="status" aria-live="polite"></p>
+
+    </section>
+<section id="chat-app" class="chat-app" hidden>
+
+    <!-- LEFT SIDEBAR -->
+    <aside id="chat-sidebar">
+		<button id="logout">Log out</button>
+        <div class="sidebar-header">
+            <h2>Chats</h2><div align="right">Logged in as <strong id="currentUser"></strong></div>
+            <!--<button id="create-room-btn" title="Create group">＋</button>-->
+        </div>
+
+        <!-- Search -->
+        <div class="sidebar-search">
+            <input type="text"
+                   id="chat-search"
+                   placeholder="Search groups or contacts...">
+        </div>
+
+        <!-- GROUPS -->
+        <div class="sidebar-section">
+		
+            <h3 class="sidebar-header">Groups<button id="create-room-btn" title="Create group">＋</button></h3>
+
+            <ul id="room-list" class="chat-list">
+                <!--<li class="indivisual-group">Group 1(Test Group)</li>-->
+            </ul>
+        </div>
+
+        <!-- CONTACTS -->
+        <div class="sidebar-section contacts-section">
+            <h3 class="sidebar-header">Contacts<button id="invite-contact-btn" title="Create contact">＋</button></h3></h3>
+
+            <ul id="contact-list" class="chat-list">
+                <!--<li class="indivisual-contact">Contact 1(Test Contact)</li>-->
+            </ul>
+        </div>
+
+    </aside>
+
+
+    <!-- RIGHT CHAT WINDOW -->
+    <main id="chat-main">
+
+        <!-- Welcome screen -->
+        <div id="chat-welcome">
+            <h2>Welcome to Chat</h2>
+            <p>Select a group or contact to start messaging.</p>
+        </div>
+
+        <!-- Actual chat window -->
+        <section id="chat-window" hidden>
+
+            <header id="chat-header">
+                <div class="chat-header-content">
+					<div class="chat-header-info">
+						<h3 id="active-chat-name"></h3>
+						<small id="active-chat-status"></small>
+					</div>
+					<button id="delete-room-btn" title="Delete group" align="right">Delete</button>
+                </div>
+            </header>
+
+            <!-- Messages -->
+            <ul id="messages"></ul>
+
+            <!-- Typing indicator -->
+            <div id="typing-indicator"></div>
+
+            <!-- Message form -->
+            <form id="form">
+
+                <button id="upload-btn"
+                        type="button"
+                        title="Upload file">＋</button>
+
+                <input type="file"
+                       id="file-input"
+                       hidden>
+
+                <input type="text"
+                       id="input"
+                       autocomplete="off"
+                       placeholder="Type a message..."
+                       maxlength="2000"
+                       required>
+
+                <button type="submit">Send</button>
+
+            </form>
+
+        </section>
+
+    </main>
+
+</section>
+
+
+<!-- CREATE GROUP DIALOG -->
+<section id="create-group-dialog" hidden>
+
+    <div class="dialog-content">
+
+        <h3>Create New Group</h3>
+
+        <input type="text"
+               id="new-room"
+               placeholder="Enter group name">
+
+        <button id="save-room-btn">Create</button>
+        <button id="cancel-room-btn">Cancel</button>
+
+    </div>
+
+</section>
+
+
+
+<section id="invite-section">
+
+    <h2>Invite a friend</h2>
+
+    <button id="invite-contact-btn" type="button">
+        Choose contact
+    </button>
+
+    <p id="invite-status" role="status"></p>
+
+</section>
+
+
+
+<section id="admin-section" hidden>
+<!-- USER MANAGEMENT 
+<section id="user-management">-->
+
+    <p>Total Users: <span id="totalUsers">0</span></p>
+
+    <button id="refreshUsers">Refresh</button>
+
+    <button id="bulkDelete" disabled>
+        Delete Selected
+    </button>
+
+    <button id="add-user-to-room">
+        Add to Group
+    </button>
+
+    <div class="table-container">
+
+        <table>
+            <thead>
+                <tr>
+                    <th>
+                        <input type="checkbox" id="selectAll">
+                    </th>
+                    <th>Name</th>
+                    <th>Role</th>
+                    <th>Created Date</th>
+                </tr>
+            </thead>
+
+            <tbody id="userTableBody"></tbody>
+        </table>
+
+    </div>
+
+
+<p id="invite-status" role="status"></p>
+<p id="message"></p>
+</section>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+
+// ====================================
+// CHAT SELECTION
+// ====================================
+document.addEventListener("DOMContentLoaded", () => {
+	if (!window.AndroidBridge) {
+		document.getElementById("invite-section").style.display = "none";
+	}
+	verifyadmin();	
+});
+const auth = document.getElementById("auth");
+const appSection = document.getElementById("chat-app");
+const roomList = document.getElementById('room-list');
+const contactList = document.getElementById('contact-list');
+
+const chatWelcome = document.getElementById('chat-welcome');
+const chatWindow = document.getElementById('chat-window');
+const adminSection = document.getElementById('admin-section');
+
+const activeChatName = document.getElementById('active-chat-name');
+const activeChatStatus = document.getElementById('active-chat-status');
+
+const messages = document.getElementById('messages');
+const messageInput = document.getElementById('input');
+const typingIndicator = document.getElementById('typing-indicator');
+const chatMessages = document.getElementById("messages");
+let isAdmin = false;
+let currentUsername = 'Anonymous';
+let currentChat = null;
+let users = [];
+let selectedUsers = [];
+let selectedGroupId;
+let typingTimeout;
+let joinedGroupUsers = new Set();
+//--------------AUTHENTICATION
+const socket = io({ autoConnect: false });
+const usernameInput = document.getElementById("username");
+const passwordInput = document.getElementById("password");
+document.getElementById("login").onclick = () => {
+	authenticate("login");
+	chatWindow.hidden = false;
+	appSection.hidden = false;
+	adminSection.hidden = false;
+}
+document.getElementById("register").onclick = () => {
+	authenticate("register");
+	chatWindow.hidden = false;
+	appSection.hidden = false;
+	adminSection.hidden = false;
+}
+// ====================================
+// LOGOUT
+// ====================================
+document.getElementById("logout").onclick = async () => {
+  try {
+	await api("/api/logout", {});
+	socket.disconnect();
+	messages.replaceChildren();
+	chat.hidden = true;
+	auth.hidden = false;
+	status.textContent = "Logged out.";
+  } catch (err) {
+	status.textContent = err.message;
+  }
+};
+
+
+// ---SCOCKET HANDLING------
+socket.on("connect_error", (err) => {
+  status.textContent = "Chat connection failed: " + err.message;
+});
+socket.on("connect", () => {
+  console.log("Socket connected:");//, socket.id);
+});
+
+socket.on("disconnect", (reason) => {
+  console.log("Socket disconnected:", reason);
+});
+
+socket.on("connect_error", (err) => {
+  console.error("Socket connection error:", err.message);
+});
+// chat message SOCKET LISTENER
+socket.on("chat message", (data) => {
+
+	// FOR SINGLE 'HI' MESSAGE IT WILL WORK
+	const allMessages = Array.isArray(data)
+        ? data
+        : data.messages;
+
+    if (!Array.isArray(allMessages)) {
+        console.error("Messages are not an array:", data);
+        showGroupMessage({
+            senderId: data.senderId,
+            username: data.username,
+            message: data.message,
+            timestamp: data.timestamp
+        });
+    }else{
+		data.forEach((msg, index) => {
+
+			showGroupMessage({
+				senderId: data.senderId,
+				username: data.username,
+				message: data.message,
+				timestamp: data.timestamp
+			});
+		});
+	}
+      if (window.AndroidBridge) {
+        window.AndroidBridge.onResponseReceived(item.textContent);
+      }
+});
+// Handle room join confirmation
+    socket.on('joined room', (room) => {
+        const item = document.createElement('li');
+        item.className = 'system-message';
+        item.textContent = `You joined ${room}`;
+        messages.appendChild(item);
+        currentRoom = room;
+        messages.scrollTop = messages.scrollHeight;
+    });
+	// Handle room messages
+    socket.on('room message', (data) => {
+        const item = document.createElement('li');
+        item.className = 'system-message';
+        item.textContent = data.message;
+        messages.appendChild(item);
+        messages.scrollTop = messages.scrollHeight;
+    });
+	// Handle typing events
+   messageInput.addEventListener('input', () => {
+     // User is typing
+     if (!typingTimeout) {
+         socket.emit('typing', true);
+     }
+	  // Clear previous timeout
+     clearTimeout(typingTimeout);
+	 // Set a timeout to indicate user stopped typing
+     typingTimeout = setTimeout(() => {
+         socket.emit('typing', false);
+         typingTimeout = null;
+     }, 1000);
+   });
+   // Update typing indicator
+   socket.on('typing users', (usernames) => {
+     const typingUsers = usernames.filter(u => u !== currentUsername);
+     if (typingUsers.length > 0) {
+         typingIndicator.textContent = `${typingUsers.join(', ')} ${typingUsers.length > 1 ? 'are' : 'is'} typing...`;
+         typingIndicator.style.display = 'block';
+     } else {
+         typingIndicator.style.display = 'none';
+     }
+   });
+// Update user list
+socket.on('user list', (data) => {
+ if (data.room === currentRoom) {
+	data.users.forEach(user => {
+		joinedGroupUsers.add(user.username);
+		activeChatStatus.textContent = 'Group conversation: Users: ' +  [...joinedGroupUsers].join(", ");
+	 });
+ }
+});
+async function api(path, body) {
+	const response = await fetch(path, {
+		method: body ? "POST" : "GET",
+		credentials: "same-origin",
+		headers: body ? { "Content-Type": "application/json" } : {},
+		body: body ? JSON.stringify(body) : undefined
+	});
+
+	const data = await response.json().catch(() => ({}));
+
+	if (!response.ok) {
+		const error = new Error(data.error || "Request failed");
+		error.status = response.status;
+		throw error;
+	}
+	auth.hidden = true;
+	return data;
+}
+
+// Restore the session on page load.
+
+(async () => {
+    try {
+        const user = await api("/api/me");
+
+        openChat(user);
+		
+        // Display logged-in user
+        document.getElementById("currentUser").textContent =
+            user.username || user.name;
+		currentUsername = user.username;
+        // Show sidebar and empty chat screen
+        document.getElementById("chat-app").hidden = false;
+
+        document.getElementById("chat-welcome").hidden = false;
+        document.getElementById("chat-window").hidden = true;
+
+        // No conversation selected initially
+        currentChat = null;
+        currentRoom = null;
+
+        // Load groups and contacts
+        await loadMyGroups();
+        await fetchUsers();
+
+    } catch (err) {
+
+        if (err.status !== 401) {
+            console.error("Session restoration failed:", err);
+			auth.hidden = false;
+			document.getElementById("chat-app").hidden = true;
+        }
+
+        
+    }
+})();
+
+
+// OPEN CHAT FUNCTION
+
+function openChat(name, type) { 
+    currentChat = {
+        name: name,
+        type: type
+    };
+	//
+	auth.hidden = true;
+    // Hide welcome screen
+    chatWelcome.hidden = true;
+
+    // Show chat window
+    chatWindow.hidden = false;
+	appSection.hidden = false;
+	adminSection.hidden = false;
+	
+
+    // Display selected group/contact name
+    activeChatName.textContent = name;
+
+    // Display status
+    activeChatStatus.textContent =
+        type === 'group' ? 'Group conversation Users: ' : 'Online';
+
+    // Clear previous messages
+    messages.innerHTML = '';
+
+    // Highlight selected item
+    document.querySelectorAll(
+        '.indivisual-group, .indivisual-contact'
+    ).forEach(item => {
+
+        item.classList.remove('active');
+
+        if (item.textContent.trim() === name) {
+            item.classList.add('active');
+        }
+
+    });
+    if (!socket.connected) socket.connect();
+}
+
+
+
+// GROUP CLICK EVENT
+
+roomList.addEventListener('click', async function(e) {
+
+    const group = e.target.closest('.indivisual-group');
+
+    if (!group) return;
+	socket.emit('join room', e.target.id);
+    openChat(group.textContent.trim(), 'group');
+	selectedGroupId = e.target.id;
+	document.querySelectorAll('.indivisual-group').forEach(r => r.classList.remove('active'));
+	e.target.classList.add('active');
+	document.getElementById("add-user-to-room").textContent = "Add to " + group.textContent.trim();
+	await getGroupMessages(selectedGroupId);
+});
+
+
+
+// CONTACT CLICK EVENT
+
+contactList.addEventListener('click', function(e) {
+
+    const contact = e.target.closest('.indivisual-contact');
+
+    if (!contact) return;
+
+    openChat(contact.textContent.trim(), 'contact');
+
+});
+
+
+// ====================================
+// SEND MESSAGE
+// ====================================
+
+
+const messageForm = document.getElementById('form');
+
+
+messageForm.addEventListener('submit', async function(e) {
+
+    e.preventDefault();
+
+    const messageText = messageInput.value.trim();
+
+    if (!messageText || !currentChat) return;
+	//emitMessage(messageText, currentChat, currentUsername);
+	try{
+    const response = await fetch(`/api/sendMessage/${selectedGroupId}`, {
+	  method: "POST",
+	  credentials: "include",
+	  headers: {
+		"Content-Type": "application/json"
+	  },
+	  body: JSON.stringify({
+		content: messageInput.value,
+		messageType: "text",
+		replyTo: null,
+		conversationType: currentChat.type
+	  })
+	});
+	
+	const data = await response.json();
+
+	if (!response.ok) throw new Error(data.message);
+	
+	showMessage(data.message);
+
+//----------------------
+	const text = messageInput.value.trim();
+
+	if (messageInput.value.trim()) {
+	 socket.emit('chat message', {
+		username: currentUsername,
+		message: messageInput.value,
+		room: String(selectedGroupId)
+	 });
+	 messageInput.value = '';
+
+	 // Clear typing status
+	 if (typingTimeout) {
+		clearTimeout(typingTimeout);
+		typingTimeout = null;
+		socket.emit('typing', false);
+	 }
+	} 
+	}catch(error){
+	showMessage(error.message);
+  }
+});
+
+
+// ====================================
+// CREATE NEW GROUP
+// ====================================
+
+const createRoomBtn = document.getElementById('create-room-btn');
+
+const createGroupDialog =
+    document.getElementById('create-group-dialog');
+
+const newRoomInput = document.getElementById('new-room');
+
+const saveRoomBtn = document.getElementById('save-room-btn');
+
+const cancelRoomBtn = document.getElementById('cancel-room-btn');
+const deleteRoomBtn = document.getElementById('delete-room-btn');
+
+// Open dialog
+
+createRoomBtn.addEventListener('click', function() {
+
+    createGroupDialog.hidden = false;
+
+    newRoomInput.value = '';
+
+    newRoomInput.focus();
+	
+});
+
+
+// Save group
+
+saveRoomBtn.addEventListener('click', async function() {
+
+    const groupName = newRoomInput.value.trim();
+
+    if (!groupName) {
+        alert('Please enter group name');
+        return;
+    }
+
+    // Prevent duplicate group names
+    const existingGroups = Array.from(
+        roomList.querySelectorAll('.indivisual-group')
+    );
+
+    const exists = existingGroups.some(group =>
+        group.textContent.trim().toLowerCase() ===
+        groupName.toLowerCase()
+    );
+
+    if (exists) {
+        alert('Group already exists');
+        return;
+    }
+
+    const li = document.createElement('li');
+
+    li.className = 'indivisual-group';
+
+    li.textContent = groupName;
+
+    roomList.appendChild(li);
+
+    createGroupDialog.hidden = true;
+
+    // Automatically open newly created group
+    openChat(groupName, 'group');
+
+	if (!groupName) {
+		showMessage("Please enter a room name");
+		return;
+	}
+	try {
+	const response = await fetch(`/api/createGroups`, {
+	  method: "POST",
+	  credentials: "include",
+	  headers: {
+		"Content-Type": "application/json"
+	  },
+	  body: JSON.stringify({
+		name: groupName
+	  })
+	});
+
+	const data = await response.json();
+
+	if (!response.ok) throw new Error(data.message);
+
+	showMessage(data.message);
+	newRoomInput.value = '';
+	
+	const roomItem = document.createElement('li');
+	roomItem.className = 'room';
+	roomItem.id = data.group_id;
+	roomItem.dataset.room = groupName;
+	roomItem.textContent = groupName;
+	roomList.appendChild(roomItem);
+	selectedGroupId = data.group_id;
+  } catch (error) {
+	showMessage(error.message);
+  }
+});
+
+
+//----------- DELETE group-------
+
+deleteRoomBtn.addEventListener('click', async function() {
+
+	if(!isAdmin) {
+		alert("only admin can delete a group");
+		//throw new Error("only admin can delete a group");
+		return;
+	}
+	await deleteSingleGroup(selectedGroupId);
+	loadMyGroups();
+
+
+});
+
+// Cancel dialog
+
+cancelRoomBtn.addEventListener('click', function() {
+
+    createGroupDialog.hidden = true;
+
+});
+
+
+// ====================================
+// SEARCH GROUPS AND CONTACTS
+// ====================================
+/*
+const chatSearch = document.getElementById('chat-search');
+
+chatSearch.addEventListener('input', function() {
+
+    const searchText = this.value.toLowerCase().trim();
+
+    document.querySelectorAll(
+        '.indivisual-group, .indivisual-contact'
+    ).forEach(item => {
+
+        const name = item.textContent.toLowerCase();
+
+        item.style.display =
+            name.includes(searchText) ? '' : 'none';
+
+    });
+
+});
+*/
+
+// ====================================
+// FILE UPLOAD
+// ====================================
+
+const uploadBtn = document.getElementById('upload-btn');
+
+const fileInput = document.getElementById('file-input');
+
+uploadBtn.addEventListener('click', function() {
+
+    fileInput.click();
+
+});
+
+fileInput.addEventListener('change', async (event) => {
+	const file = event.target.files[0];
+	if (!file) return;
+
+	// Prepare form data
+	const formData = new FormData();
+	formData.append('file', file);
+
+	try {
+		// Optional: Show a loading/uploading state in your UI here
+		uploadBtn.textContent = '⏳'; 
+
+		// Send file to Node.js backend
+		const response = await fetch('/api/upload', {
+		  method: 'POST',
+		  credentials: 'same-origin',
+		  body: formData // Content-Type header is automatically set for FormData
+		});
+
+		const data = await response.json().catch(() => ({}));
+		var fileMsgToChat;
+		// Session missing or expired
+		if (response.status === 401) {
+		  alert('Please log in before uploading files.');
+		  return;
+		}
+
+		if (!response.ok || !data.success) {
+		  throw new Error(data.error || 'Upload failed.');
+		}
+		if (data.success) {
+			fileMsgToChat = data.fileName + ' sent at url ' + data.fileUrl;
+
+			if (socket.connected) {
+				socket.timeout(10000).emit("chat message",{
+				username: currentUsername,
+				message: fileMsgToChat,
+				room: String(selectedGroupId)
+				},
+				(err, response) => {
+					if (err) {
+						console.error("Server timeout or no acknowledgment:", err);
+						return;
+					}
+
+					if (response?.success) {
+						console.log("Message successfully processed");
+					} else {
+						console.error("Server rejected message:", response?.error);
+						alert(response?.error || "Failed to send message");
+					}
+				}
+				);	
+			} else {
+				console.error("Socket disconnected");
+				alert("You are offline. Please reconnect and try again.");
+			}
+		} else {
+		  alert('Upload failed.');
+		}
+	} catch (error) {
+		console.error('Error uploading file:', error);
+	} finally {
+		// Reset the icon and input
+		uploadBtn.textContent = '➕';
+		fileInput.value = ''; 
+	}
+});
+
+
+
+
+
+
+// ====================================
+// INVITE CONTACT
+// ====================================
+
+document.getElementById('invite-contact-btn')
+.addEventListener('click', function() {
+
+    if (
+      !window.AndroidBridge ||
+      typeof window.AndroidBridge.pickContact !== "function"
+    ) {
+      inviteStatus.textContent =
+        "Contact selection is available in the Android app.";
+      return;
+    }
+
+    inviteStatus.textContent = "Choose a contact...";
+    window.AndroidBridge.pickContact();;
+
+});
+// Called by Kotlin after the user selects a phone number.
+  window.onNativeContactSelected = async function (phone) {
+    inviteButton.disabled = true;
+    inviteStatus.textContent = "Creating invitation...";
+
+    try {
+      const response = await fetch("/api/invitations", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ phone })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.error || "Could not create invitation"
+        );
+      }
+
+      const message =
+        "Join me on our chat app! Use this invitation link: " +
+        result.inviteUrl;
+
+      inviteStatus.textContent = "Opening SMS app...";
+
+      if (
+        !window.AndroidBridge ||
+        typeof window.AndroidBridge.openSms !== "function"
+      ) {
+        throw new Error("Android SMS integration is unavailable");
+      }
+
+      window.AndroidBridge.openSms(phone, message);
+
+    } catch (error) {
+      inviteStatus.textContent = error.message;
+    } finally {
+      inviteButton.disabled = false;
+    }
+};
+
+// ====================================
+// USER MANAGEMENT PLACEHOLDERS
+// ====================================
+
+document.getElementById('refreshUsers').addEventListener('click', async function() {
+
+    await fetchUsers();
+
+});
+
+document.getElementById('bulkDelete').addEventListener('click', function() {
+
+    deleteSelectedUsers();
+	
+});
+
+document.getElementById('add-user-to-room').addEventListener('click', function() {
+
+    addtoroom();
+
+});
+
+
+// SELECT ALL
+document.getElementById("selectAll").addEventListener("change", function() {
+  selectedUsers = this.checked
+    ? users.map(user => user._id)
+    : [];
+
+  document.querySelectorAll(".user-checkbox").forEach(checkbox => {
+    checkbox.checked = this.checked;
+  });
+
+  updateBulkButton();
+});
+
+
+// ----------ALl FUNCTIONS CALL-----------
+
+
+
+async function authenticate(action) {
+	status.textContent = "";
+
+	try {
+	const user = await api("/api/" + action, {
+	  username: usernameInput.value.trim(),
+	  password: passwordInput.value
+	});
+
+	passwordInput.value = "";
+	openChat(user);
+	} catch (err) {
+		status.textContent = err.message;
+	}
+}
+
+
+async function verifyadmin() {
+	const roomSection = document.getElementById("room-management");
+	try{
+		const respo = await fetch('/api/checkadmin',
+		{
+		method: "GET",
+		credentials: "include"
+		}
+		);
+		if (!respo.ok) {
+			adminSection.style.display = "none";
+			return;
+		}
+		const data = await respo.json();
+		isAdmin = true;
+	}
+	catch(error){
+		console.error("Admin verification failed:", error);
+
+	}
+}
+
+// FETCH ALL GROUPS AND CONTACTS
+
+async function loadMyGroups(){
+	try{
+		const resp = await fetch('/api/getMyGroups', {
+		credentials: "include"
+	});
+	const data = await resp.json();
+	if (!resp.ok) {
+		throw new Error(data.message || "Unable to fetch groups");
+	}
+	if(data.groups.length == 0){
+		showMessage("No groups found");
+			return;
+	}
+	data.groups.forEach(group => {
+		const roomItem = document.createElement('li');
+
+		roomItem.className = 'indivisual-group';
+		roomItem.id = group._id;
+		roomItem.dataset.room = group.name;
+		roomItem.textContent = group.name;
+		roomList.appendChild(roomItem);
+			
+	 });
+	}catch(error){
+		showMessage(error.message);
+	}
+}
+	
+	// FETCH ALL USERS
+async function fetchUsers() {
+  try {
+    const response = await fetch(`/api/getallusers`, {
+      credentials: "include"
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message);
+    }
+
+    users = data.users;
+    selectedUsers = [];
+
+    displayUsers();
+	displayContacts(data);
+  } catch (error) {
+    showMessage(error.message);
+  }
+}
+// DISPLAY USERS
+function displayContacts(data) {
+	if(data.users.length == 0){
+		showMessage("No contacts found");
+			return;
+	}
+	data.users.forEach(contact => {
+		const eachConact = document.createElement('li');
+
+		eachConact.className = 'indivisual-contact';
+		eachConact.id = contact._id;
+		eachConact.dataset.contact = contact.username;
+		eachConact.textContent = contact.username;
+		contactList.appendChild(eachConact);
+			
+	 });
+}
+// DISPLAY USERS
+function displayUsers() {
+  const tbody = document.getElementById("userTableBody");
+
+  document.getElementById("totalUsers").textContent = users.length;
+
+  tbody.innerHTML = "";
+
+  users.forEach(user => {
+    const row = document.createElement("tr");
+
+    row.innerHTML = `
+      <td>
+        <input type="checkbox"
+          class="user-checkbox"
+          value="${user._id}"
+          onchange="toggleUser('${user._id}')">
+      </td>
+
+      <td>${user.username || ""}</td>
+	<td>${user.role || ""}</td>
+      <td>
+        ${user.createdAt
+          ? new Date(user.createdAt).toLocaleDateString()
+          : "N/A"}
+      </td>
+
+      <td>
+        <button class="delete-btn"
+          onclick="deleteSingleUser('${user._id}')">
+          Delete
+        </button>
+      </td>
+    `;
+
+    tbody.appendChild(row);
+  });
+
+  document.getElementById("selectAll").checked = false;
+  updateBulkButton();
+}
+// SHOW MESSAGE
+function showMessage(message) {
+  document.getElementById("message").textContent = message;
+}
+
+// -------------ADD USERS TO ROOM/GROUP--
+
+async function addtoroom(){
+	if (!selectedUsers.length){
+		throw new Error("Atleast one user needs to be selected");
+		showMessage("Atleast one user needs to be selected");
+	}
+	try {
+	const response = await fetch(`/api/addGroupMembers`, {
+	  method: "POST",
+	  credentials: "include",
+	  headers: {
+		"Content-Type": "application/json"
+	  },
+	  body: JSON.stringify({
+		groupId: selectedGroupId,
+		memberIds: [...selectedUsers]
+	  })
+	});
+	
+	const data = await response.json();
+
+	if (!response.ok) throw new Error(data.message);
+
+	showMessage(data.message);
+	
+  } catch (error) {
+	showMessage(error.message);
+  }
+}
+
+async function getGroupMessages(selectedGroupId){
+	try {
+		const response = await fetch(`/api/group/${selectedGroupId}/getMessages`, {
+			method: "GET",
+			credentials: "include",
+			headers: {
+				"Content-Type": "application/json"
+			}
+		});
+
+		const data = await response.json();
+		if (!response.ok) {
+			throw new Error(data.message || "Failed to fetch messages");
+		}
+
+		if (data.success) {
+			messages.innerHTML = "";
+			data.messages.forEach(message => {
+				showGroupMessage({
+					username: message.sender.username,
+					message: message.content,
+					timestamp: message.createdAt
+				});
+			});
+			messages.scrollTop = messages.scrollHeight;
+		}
+
+	} catch (error) {
+		console.error("Error fetching messages:", error.message);
+	}
+}
+function showGroupMessage(data) {
+    const item = document.createElement("li");
+
+    // Compare sender username with logged-in username
+    const isMyMessage = String(data.username) === String(currentUsername);
+
+    item.className = isMyMessage
+        ? "message message-right"
+        : "message message-left";
+
+    // Show username only for other group members
+    if (!isMyMessage) {
+        const username = document.createElement("div");
+        username.classList.add("message-username");
+        username.textContent = data.username || "Unknown";
+        item.appendChild(username);
+    }
+    const message = document.createElement("div");
+    message.classList.add("message-content");
+    message.textContent = data.message;
+
+    item.appendChild(message);
+
+    const time = document.createElement("div");
+    time.classList.add("message-time");
+
+    time.textContent = data.timestamp
+        ? new Date(data.timestamp).toLocaleTimeString()
+        : "";
+
+    item.appendChild(time);
+
+    chatMessages.appendChild(item);
+	
+    chatMessages.scrollTop = messages.scrollHeight;
+}
+// Display message
+function displayMessages(messages) {
+    //const chatMessages = document.getElementById("messages");
+
+    chatMessages.innerHTML = "";
+
+    messages.forEach(message => {
+        const div = document.createElement("li");
+
+        const username = document.createElement("strong");
+        username.textContent = message.sender?.username || "Unknown";
+
+        const content = document.createElement("p");
+        content.textContent = message.content;
+
+		div.textContent = username.textContent + ": " + content.textContent;
+		
+        chatMessages.appendChild(div);
+    });
+}
+
+
+// Add contact to group
+async function addtoroom(){
+	if (!selectedUsers.length){
+		throw new Error("Atleast one user needs to be selected");
+		showMessage("Atleast one user needs to be selected");
+	}
+	try {
+	const response = await fetch(`/api/addGroupMembers`, {
+	  method: "POST",
+	  credentials: "include",
+	  headers: {
+		"Content-Type": "application/json"
+	  },
+	  body: JSON.stringify({
+		groupId: selectedGroupId,
+		memberIds: [...selectedUsers]
+	  })
+	});
+	
+	const data = await response.json();
+
+	if (!response.ok) throw new Error(data.message);
+
+	showMessage(data.message);
+
+  } catch (error) {
+	showMessage(error.message);
+  }
+}
+// SELECT / DESELECT USER
+function toggleUser(id) {
+  if (selectedUsers.includes(id)) {
+    selectedUsers = selectedUsers.filter(uid => uid !== id);
+  } else {
+    selectedUsers.push(id);
+  }
+
+  document.getElementById("selectAll").checked =
+    users.length > 0 && selectedUsers.length === users.length;
+
+  updateBulkButton();
+}
+// UPDATE BULK BUTTON
+function updateBulkButton() {
+  const button = document.getElementById("bulkDelete");
+
+  button.disabled = selectedUsers.length === 0;
+  button.textContent = `Delete Selected (${selectedUsers.length})`;
+}
+// DELETE SINGLE USER
+async function deleteSingleUser(id) {
+  if (!confirm("Are you sure you want to delete this user?")) return;
+
+  try {
+    const response = await fetch(`/users/${id}`, {
+      method: "DELETE",
+      credentials: "include"
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) throw new Error(data.message);
+
+    showMessage(data.message);
+    await fetchUsers();
+
+  } catch (error) {
+    showMessage(error.message);
+  }
+}
+//----DELETE SINGLE GROUP----
+async function deleteSingleGroup(id) {
+  if (!confirm("Are you sure you want to delete this group?")) return;
+
+  try {
+    const response = await fetch(`/groups/${selectedGroupId}`, {
+      method: "DELETE",
+      credentials: "include"
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) throw new Error(data.message);
+
+    showMessage(data.message);
+
+  } catch (error) {
+    showMessage(error.message);
+  }
+}
+// DELETE MULTIPLE USERS
+async function deleteSelectedUsers() {
+  if (!selectedUsers.length) return;
+
+  if (!confirm(`Delete ${selectedUsers.length} selected users?`)) return;
+
+  try {
+    const response = await fetch(`/bulkdelete`, {
+      method: "DELETE",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        userIds: selectedUsers
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) throw new Error(data.message);
+
+    showMessage(data.message);
+    await fetchUsers();
+
+  } catch (error) {
+    showMessage(error.message);
+  }
+}
+
+</script>
+
+</body>
+</html>
