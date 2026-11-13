@@ -555,7 +555,10 @@ roomList.addEventListener('click', async function(e) {
     if (!group) return;
 	socket.emit('join room', e.target.id);
     openChat(group.textContent.trim(), 'group');
+	const group = e.target.closest('.indivisual-group');
 	selectedGroupId = e.target.id;
+	// Get ID from the actual group element
+    selectedGroupId = group.id;
 	document.querySelectorAll('.indivisual-group').forEach(r => r.classList.remove('active'));
 	e.target.classList.add('active');
 	document.getElementById("add-user-to-room").textContent = "Add to " + group.textContent.trim();
