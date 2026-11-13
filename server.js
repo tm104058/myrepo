@@ -1048,13 +1048,16 @@ io.on("connection", (socket) => {
 		if (!room || !socket.rooms.has(room)) {
 			return;
 		}
+		//console.log("Socket user:", socket.data.user);
+		//console.log("User ID:", socket.data.user?.id);
+		//console.log("User ID (_id):", socket.data.user?._id);
 		//socket.to(room).emit('chat message', {
 		io.to(room).emit('chat message', {
 			username: socket.data.user.username,
 			message: data.message,
 			timestamp: new Date().toISOString(),
 			room: room,
-			senderId: String(socket.data.user._id)
+			senderId: String(socket.data.user?.id)
 		});
 	});
 
