@@ -11,11 +11,32 @@
         [hidden] {
             display: none !important;
         }
-		#room-list {
-			position: relative;
-			z-index: 10;
-			pointer-events: auto;
-		}
+
+        .indivisual-group,
+        .indivisual-contact {
+            cursor: pointer;
+            padding: 12px;
+            border-radius: 6px;
+            list-style: none;
+			touch-action: manipulation;
+			-webkit-tap-highlight-color: transparent;
+			user-select: none;
+        }
+
+        .indivisual-group:hover,
+        .indivisual-contact:hover {
+            background-color: #e8e8e8;
+        }
+
+        .indivisual-group.active,
+        .indivisual-contact.active {
+            background-color: #dceaff;
+            color: #1673d1;
+        }
+
+        .dialog-content {
+            padding: 20px;
+        }
 
         #create-group-dialog {
             position: fixed;
@@ -543,15 +564,6 @@ roomList.addEventListener('pointerup', async function(e) {
 	await getGroupMessages(selectedGroupId);
 });
 
-// ------TESTING GOES HERE-----
-document.addEventListener('pointerdown', function(e) {
-    console.log(
-        "Touched element:",
-        e.target,
-        "Class:",
-        e.target.className
-    );
-}, true);
 
 
 // CONTACT CLICK EVENT
