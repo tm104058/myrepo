@@ -245,7 +245,23 @@ input:focus-visible {
 #chat-window[hidden] {
     display: none;
 }
+#room-list {
+    position: relative;
+    z-index: 10;
+    pointer-events: auto;
+}
 
+.indivisual-group,
+.indivisual-contact {
+    cursor: pointer;
+    padding: 12px;
+    border-radius: 6px;
+    list-style: none;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    pointer-events: auto;
+    user-select: none;
+}
 /* =====================================
    5. CHAT HEADER
 ===================================== */

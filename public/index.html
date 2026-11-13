@@ -11,32 +11,11 @@
         [hidden] {
             display: none !important;
         }
-
-        .indivisual-group,
-        .indivisual-contact {
-            cursor: pointer;
-            padding: 12px;
-            border-radius: 6px;
-            list-style: none;
-			touch-action: manipulation;
-			-webkit-tap-highlight-color: transparent;
-			user-select: none;
-        }
-
-        .indivisual-group:hover,
-        .indivisual-contact:hover {
-            background-color: #e8e8e8;
-        }
-
-        .indivisual-group.active,
-        .indivisual-contact.active {
-            background-color: #dceaff;
-            color: #1673d1;
-        }
-
-        .dialog-content {
-            padding: 20px;
-        }
+		#room-list {
+			position: relative;
+			z-index: 10;
+			pointer-events: auto;
+		}
 
         #create-group-dialog {
             position: fixed;
@@ -548,14 +527,14 @@ function openChat(name, type) {
 
 // GROUP CLICK EVENT
 
-roomList.addEventListener('click', async function(e) {
+roomList.addEventListener('pointerup', async function(e) {
 
     const group = e.target.closest('.indivisual-group');
 
     if (!group) return;
 	socket.emit('join room', e.target.id);
     openChat(group.textContent.trim(), 'group');
-	//selectedGroupId = e.target.id;
+
 	// Get ID from the actual group element
     selectedGroupId = group.id;
 	document.querySelectorAll('.indivisual-group').forEach(r => r.classList.remove('active'));
@@ -564,6 +543,15 @@ roomList.addEventListener('click', async function(e) {
 	await getGroupMessages(selectedGroupId);
 });
 
+// ------TESTING GOES HERE-----
+document.addEventListener('pointerdown', function(e) {
+    console.log(
+        "Touched element:",
+        e.target,
+        "Class:",
+        e.target.className
+    );
+}, true);
 
 
 // CONTACT CLICK EVENT
