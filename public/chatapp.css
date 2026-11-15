@@ -772,3 +772,18 @@ input:focus-visible {
         margin: 30px auto;
     }
 }
+@media (max-width: 768px) {
+
+    #room-list {
+        position: relative;
+        z-index: 100;
+        pointer-events: auto;
+    }
+
+    .indivisual-group {
+        position: relative;
+        pointer-events: auto;
+        touch-action: manipulation;
+        cursor: pointer;
+    }
+}
