@@ -161,10 +161,12 @@
 
         <!-- Actual chat window -->
         <section id="chat-window" hidden>
-
+			
             <header id="chat-header">
                 <div class="chat-header-content">
-					<div class="chat-header-info">
+					<button id="back-room-btn" class="mobile-back-btn">
+				&#8592; Back
+			</button><div class="chat-header-info">
 						<h3 id="active-chat-name"></h3>
 						<small id="active-chat-status"></small>
 					</div>
@@ -290,6 +292,14 @@ document.addEventListener("DOMContentLoaded", () => {
 	}
 	verifyadmin();	
 });
+if (isMobileBrowser()) {
+    alert('Mobile browser detected');
+} else {
+    console.log("Desktop browser detected");
+}
+function isMobileBrowser() {
+    return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
 const auth = document.getElementById("auth");
 const appSection = document.getElementById("chat-app");
 const roomList = document.getElementById('room-list');
@@ -541,10 +551,23 @@ function openChat(name, type) {
         }
 
     });
+	
+	if (window.innerWidth <= 768) {
+        document.querySelector('.chat-sidebar').style.display = 'none';
+        chatWindow.style.display = 'flex';
+    }
+	
     if (!socket.connected) socket.connect();
 }
 
+document.getElementById('back-room-btn').addEventListener('click', function() {
 
+	// Show sidebar again
+	document.body.classList.remove('mobile-chat-open');
+
+
+
+});
 
 // GROUP CLICK EVENT
 

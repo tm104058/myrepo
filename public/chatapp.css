@@ -312,6 +312,27 @@ input:focus-visible {
 #delete-room-btn:active {
     background-color: #842029;
 }
+#back-room-btn {
+    margin-left: auto;
+    flex-shrink: 0;
+    background-color: #198754;
+    color: white;
+    border: none;
+    padding: 9px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background-color 0.2s ease;
+}
+
+#back-room-btn:hover {
+    background-color: #146c43;
+}
+
+#back-room-btn:active {
+    background-color: #0f5132;
+}
 /* =====================================
    6. MESSAGES AREA
 ===================================== */
