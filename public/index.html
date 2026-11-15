@@ -553,14 +553,20 @@ roomList.addEventListener('click', async function(e) {
     const group = e.target.closest('.indivisual-group');
 
     if (!group) return;
-	socket.emit('join room', e.target.id);
-
 	// Get ID from the actual group element
     selectedGroupId = group.id;
+	
+	socket.emit('join room', selectedGroupId);
+
+	// Highlight selected group
 	document.querySelectorAll('.indivisual-group').forEach(r => r.classList.remove('active'));
-	e.target.classList.add('active');
+	
+	group.classList.add('active');
+	
 	document.getElementById("add-user-to-room").textContent = "Add to " + group.textContent.trim();
 	openChat(group.textContent.trim(), 'group');
+	
+	// Load group messages
 	await getGroupMessages(selectedGroupId);
 });
 
