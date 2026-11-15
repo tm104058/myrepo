@@ -585,10 +585,10 @@ roomList.addEventListener('click', async function(e) {
 	group.classList.add('active');
 	
 	document.getElementById("add-user-to-room").textContent = "Add to " + group.textContent.trim();
-	if (isMobileBrowser) {
+	/*if (isMobileBrowser) {
         document.querySelector('.chat-sidebar').style.display = 'none';
         chatWindow.style.display = 'flex';
-    }
+    }*/
 	openChat(group.textContent.trim(), 'group');
 	
 	// Load group messages
