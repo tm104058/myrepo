@@ -161,12 +161,13 @@
 
         <!-- Actual chat window -->
         <section id="chat-window" hidden>
-			
+
             <header id="chat-header">
                 <div class="chat-header-content">
-					<button id="back-room-btn" class="mobile-back-btn">
+				<button id="back-room-btn" class="mobile-back-btn">
 				&#8592; Back
-			</button><div class="chat-header-info">
+			</button>
+					<div class="chat-header-info">
 						<h3 id="active-chat-name"></h3>
 						<small id="active-chat-status"></small>
 					</div>
@@ -551,21 +552,21 @@ function openChat(name, type) {
         }
 
     });
-	
-	//if (window.innerWidth <= 768) {
-	
-	
     if (!socket.connected) socket.connect();
 }
 
+
+//BACK BUTTON
 document.getElementById('back-room-btn').addEventListener('click', function() {
 
 	// Show sidebar again
 	document.body.classList.remove('mobile-chat-open');
-
-
+	document.getElementById('chat-sidebar').hidden = false;
+	chatWelcome.hidden = false;
+	document.querySelector('.chat-app').classList.remove('chat-open');
 
 });
+
 
 // GROUP CLICK EVENT
 
@@ -585,10 +586,12 @@ roomList.addEventListener('click', async function(e) {
 	group.classList.add('active');
 	
 	document.getElementById("add-user-to-room").textContent = "Add to " + group.textContent.trim();
-	/*if (isMobileBrowser) {
-        document.querySelector('.chat-sidebar').style.display = 'none';
-        chatWindow.style.display = 'flex';
-    }*/
+	if (isMobileBrowser()){// || window.innerWidth <= 768) {
+	console.log('Which browser detected?');
+		document.querySelector('.chat-app').classList.add('chat-open');
+		document.getElementById('chat-sidebar').hidden = true;
+
+    }
 	openChat(group.textContent.trim(), 'group');
 	
 	// Load group messages
