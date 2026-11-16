@@ -323,6 +323,7 @@ let currentChat = null;
 let users = [];
 let selectedUsers = [];
 let selectedGroupId;
+let selectedContactId;
 let typingTimeout;
 let joinedGroupUsers = new Set();
 //--------------AUTHENTICATION
@@ -608,7 +609,8 @@ contactList.addEventListener('click', function(e) {
 
     if (!contact) return;
 
-    openChat(contact.textContent.trim(), 'contact');
+    selectedContactId = contact.id;
+    openChat(contact.textContent.trim(), 'private');
 
 });
 
@@ -628,9 +630,17 @@ messageForm.addEventListener('submit', async function(e) {
     const messageText = messageInput.value.trim();
 
     if (!messageText || !currentChat) return;
-	//emitMessage(messageText, currentChat, currentUsername);
+	
+	let apiString = `/api/sendMessage/${selectedGroupId}`;
+	let roomString = String(selectedGroupId);
+
+	if(currentChat.type == 'private') {
+		apiString = `/api/sendMessage/${selectedContactId}`;
+		roomString = null;
+	}
+	console.log('current chat str  is:', apiString);
 	try{
-    const response = await fetch(`/api/sendMessage/${selectedGroupId}`, {
+    const response = await fetch(apiString, {
 	  method: "POST",
 	  credentials: "include",
 	  headers: {
@@ -652,12 +662,13 @@ messageForm.addEventListener('submit', async function(e) {
 
 //----------------------
 	const text = messageInput.value.trim();
-
+	
 	if (messageInput.value.trim()) {
 	 socket.emit('chat message', {
 		username: currentUsername,
 		message: messageInput.value,
-		room: String(selectedGroupId)
+		room: roomString,
+		conversationType: currentChat.type
 	 });
 	 messageInput.value = '';
 

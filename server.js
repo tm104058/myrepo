@@ -382,6 +382,69 @@ try{
     });
 }
 });
+app.post("/api/sendMessage/:contactId", requireLogin, async(req, res, next) => {
+	try{
+		console.log('reached server');
+		const userId = req.session.user.id;
+	
+		if (!mongoose.isValidObjectId(userId)) {
+		  return res.status(401).json({
+			error: "Please log in again"
+		  });
+		}
+		const { content, messageType, replyTo, conversationType} = req.body; 
+		const { contactId } = req.params;
+		
+		//---
+		const user = await User.findOne({
+			_id: contactId
+		});
+		if(!user) {
+			return res.status(403).json({
+			success: false,
+			message: "User not found or access denied"
+		});
+		console.log('No user found with id', contactId);
+		}
+		const message = await messageModel.create({
+			groupId: null,
+			sender: userId,
+			content,
+			messageType: messageType || "text",
+			replyTo: replyTo || null,
+			conversationType: conversationType || "private"
+		});
+		// Update latest message reference
+
+		// Update contact with latest 5 messages---Need to be developed
+		/*await groupsModel.findByIdAndUpdate(groupId, {
+		  $push: {
+			recentMessages: {
+			  $each: [message._id],
+			  $slice: -5,
+			},
+		  },
+		  $set: {
+			lastMessage: message._id,
+			lastMessageAt: message.createdAt
+		}
+		});
+		*/
+		
+		res.status(201).json({
+		success: true,
+		message,
+		});
+		console.log('Success-->', message);
+	}catch(error){
+		console.log('ERROR-->', error);
+		res.status(500).json({
+		success: false,
+		message: error.message,
+		});
+	}
+});
+
 app.post("/api/sendMessage/:groupId", requireLogin, async(req, res, next) => {
 	try{
 		const userId = req.session.user.id;
@@ -1045,20 +1108,34 @@ io.on("connection", (socket) => {
 	// Modify message handler // Real-time chat message
 	socket.on('chat message', (data) => {
 		const room = String(data.room);
-		if (!room || !socket.rooms.has(room)) {
+		const messageType = String(data.conversationType);
+		console.log('Inside server side chat message section');
+		if ((!room || !socket.rooms.has(room)) && !messageType) {
+			console.log(room,  !socket.rooms.has(room), messageType);
 			return;
 		}
-		//console.log("Socket user:", socket.data.user);
-		//console.log("User ID:", socket.data.user?.id);
-		//console.log("User ID (_id):", socket.data.user?._id);
-		//socket.to(room).emit('chat message', {
-		io.to(room).emit('chat message', {
+		console.log('messageType-->', messageType);
+		if(messageType == 'private'){
+			console.log('socket.data.user.username->', socket.data.user.username);
+			console.log('  data.message-->', data.message);
+			console.log('  user ID--> ', socket.data.user?.id);
+			
+			io.to(socket.data.user?.id).emit('chat message', {
 			username: socket.data.user.username,
 			message: data.message,
 			timestamp: new Date().toISOString(),
-			room: room,
 			senderId: String(socket.data.user?.id)
-		});
+			});
+		}
+		if(messageType == 'group'){
+			io.to(room).emit('chat message', {
+				username: socket.data.user.username,
+				message: data.message,
+				timestamp: new Date().toISOString(),
+				room: room,
+				senderId: String(socket.data.user?.id)
+			});
+		}
 	});
 
 	// Handle typing status
