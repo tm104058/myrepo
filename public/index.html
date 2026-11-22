@@ -649,6 +649,7 @@ contactList.addEventListener('click', async function(e) {
     const contact = e.target.closest('.indivisual-contact');
 
     if (!contact) return;
+	contact.classList.add('active');
     selectedContactId = contact.id;
 	console.log('selected contact is: ', selectedContactId);
     openChat(contact.textContent.trim(), 'private');
