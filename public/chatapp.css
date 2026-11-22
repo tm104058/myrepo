@@ -916,4 +916,16 @@ input:focus-visible {
         touch-action: manipulation;
         cursor: pointer;
     }
+	#contact-list {
+        position: relative;
+        z-index: 100;
+        pointer-events: auto;
+    }
+
+    .indivisual-contact {
+        position: relative;
+        pointer-events: auto;
+        touch-action: manipulation;
+        cursor: pointer;
+    }
 }
