@@ -207,7 +207,11 @@ const messageSchema = new mongoose.Schema(
       enum: ["private", "group"],
       required: true,
     },
-
+	senderUsername: {
+		type: String,
+		ref: "User",
+		required: true,
+	},
     groupId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Group",
@@ -382,7 +386,7 @@ try{
     });
 }
 });
-app.post("/api/sendMessage/:contactId", requireLogin, async(req, res, next) => {
+app.post("/api/sendMessageToContact/:contactId", requireLogin, async(req, res, next) => {
 	try{
 		console.log('reached server');
 		const userId = req.session.user.id;
@@ -392,7 +396,7 @@ app.post("/api/sendMessage/:contactId", requireLogin, async(req, res, next) => {
 			error: "Please log in again"
 		  });
 		}
-		const { content, messageType, replyTo, conversationType} = req.body; 
+		const { content, messageType, replyTo, conversationType, userName} = req.body; 
 		const { contactId } = req.params;
 		
 		//---
@@ -409,6 +413,7 @@ app.post("/api/sendMessage/:contactId", requireLogin, async(req, res, next) => {
 		const message = await messageModel.create({
 			groupId: null,
 			sender: userId,
+			senderUsername: userName,
 			content,
 			messageType: messageType || "text",
 			replyTo: replyTo || null,
@@ -511,6 +516,80 @@ app.post("/api/sendMessage/:groupId", requireLogin, async(req, res, next) => {
 		message: error.message,
 		});
 	}
+});
+app.get("/api/contact/:contactId/getMessages", requireLogin, async (req, res) => {
+    try {
+        const userId = req.session.user.id;
+        const { contactId } = req.params;
+
+        if (!mongoose.isValidObjectId(userId) ||
+            !mongoose.isValidObjectId(contactId)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid ID"
+            });
+        }
+		
+       const group = await messageModel.find({
+			conversationType: "private",
+			sender: { $in: [
+				new mongoose.Types.ObjectId(userId),
+				new mongoose.Types.ObjectId(contactId)
+				]
+			},
+			replyTo: { $in: [
+				new mongoose.Types.ObjectId(userId), 
+				new mongoose.Types.ObjectId(contactId)
+				] 
+			}
+		}).sort({ timestamp: 1 });
+		
+		console.log('userId is , ', userId);
+		console.log('contactId is , ', contactId);
+		/*const group = await messageModel.aggregate([
+					  {
+						$match: {
+						  conversationType: "private",
+						  sender: {
+							$in: [userId, contactId]
+						  }
+						}
+					  },
+					  {
+						$sort: {
+						  createdAt: -1
+						}
+					  },
+					  {
+						$limit: 5
+					  },
+					  {
+						$sort: {
+						  createdAt: 1
+						}
+					  }
+					]);*/
+		console.log('All messages', group);
+
+        if (!group) {
+            return res.status(403).json({
+                success: false,
+                message: "Conversations not found or access denied"
+            });
+        }
+		console.log('inside fetch contact mesg-->');
+		console.log(group.content);
+        return res.status(200).json({
+            success: true,
+            messages: group
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
 });
 app.get("/api/group/:groupId/getMessages", requireLogin, async (req, res) => {
     try {
@@ -1105,29 +1184,80 @@ io.on("connection", (socket) => {
 		}
 	});
 	
+	//JOIN NEW CONTACT SOCKET  ---- Start
+
+	socket.on('join private chat', (receiverId) => {
+		const senderId = socket.data.user.id;
+
+		if (!receiverId || receiverId === senderId) {
+			return;
+		}
+		
+		// Generate a consistent room ID for both users
+		const room = [senderId, receiverId].sort().join('_');
+		
+		// Join the new room
+		socket.join(room);
+		// Verify sender has joined this private room
+		if (!socket.rooms.has(room)) {
+			return;
+		}
+
+		// Notify other contact
+		socket.to(room).emit('join private chat', {
+			room,
+			receiverId,
+			message: `${socket.data.user.username} has joined the room`,
+			timestamp: new Date().toISOString()
+		});
+	});
+	
+	//JOIN NEW CONTACT SOCKET  ---- End
+	// Modify message handler // Real-time chat message
+	socket.on('private message', (data) => {
+		const messageType = String(data.conversationType);
+		const replyTo = String(data.replyTo);
+		console.log('Inside server side chat message section');
+		
+		console.log('messageType-->', messageType);
+		const senderId = socket.data.user.id;
+
+		if (!replyTo || replyTo === senderId) {
+			return;
+		}
+		
+		// Generate a consistent room ID for both users
+		const room = [senderId, replyTo].sort().join('_');
+		
+		if(messageType == 'private'){
+			if (!replyTo) {
+				console.log('Private chat recipient room is missing');
+				return;
+			}
+			
+			io.to(room).emit('private message', {
+			username: socket.data.user.username,
+			message: data.message,
+			timestamp: new Date().toISOString(),
+			senderId: String(socket.data.user?.id),
+			replyTo: data.replyTo
+			});
+			console.log('Private message emitted to:', replyTo);
+		}
+	});
+	
 	// Modify message handler // Real-time chat message
 	socket.on('chat message', (data) => {
 		const room = String(data.room);
 		const messageType = String(data.conversationType);
+		//const replyTo = String(data.replyTo);
 		console.log('Inside server side chat message section');
-		if ((!room || !socket.rooms.has(room)) && !messageType) {
-			console.log(room,  !socket.rooms.has(room), messageType);
-			return;
-		}
-		console.log('messageType-->', messageType);
-		if(messageType == 'private'){
-			console.log('socket.data.user.username->', socket.data.user.username);
-			console.log('  data.message-->', data.message);
-			console.log('  user ID--> ', socket.data.user?.id);
-			
-			io.to(socket.data.user?.id).emit('chat message', {
-			username: socket.data.user.username,
-			message: data.message,
-			timestamp: new Date().toISOString(),
-			senderId: String(socket.data.user?.id)
-			});
-		}
+
 		if(messageType == 'group'){
+			if (!room || !socket.rooms.has(room)) {
+				console.log('User is not joined to the group room');
+				return;
+			}
 			io.to(room).emit('chat message', {
 				username: socket.data.user.username,
 				message: data.message,
@@ -1135,6 +1265,7 @@ io.on("connection", (socket) => {
 				room: room,
 				senderId: String(socket.data.user?.id)
 			});
+			console.log('Group message emitted to:', room);
 		}
 	});
 

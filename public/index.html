@@ -375,6 +375,38 @@ socket.on("connect_error", (err) => {
   console.error("Socket connection error:", err.message);
 });
 // chat message SOCKET LISTENER
+socket.on("private message", (data) => {
+
+	// FOR SINGLE 'HI' MESSAGE IT WILL WORK
+	const allMessages = Array.isArray(data)
+        ? data
+        : data.messages;
+
+    if (!Array.isArray(allMessages)) {
+        console.error("Messages are not an array:", data);
+        showGroupMessage({
+            senderId: data.senderId,
+            username: data.username,
+            message: data.message,
+            timestamp: data.timestamp
+        });
+    }else{
+		data.forEach((msg, index) => {
+
+			showGroupMessage({
+				senderId: data.senderId,
+				username: data.username,
+				message: data.message,
+				timestamp: data.timestamp
+			});
+		});
+	}
+     /* if (window.AndroidBridge) {
+        window.AndroidBridge.onResponseReceived(item.textContent);
+      }*/
+});
+
+// chat message SOCKET LISTENER
 socket.on("chat message", (data) => {
 
 	// FOR SINGLE 'HI' MESSAGE IT WILL WORK
@@ -422,6 +454,15 @@ socket.on("chat message", (data) => {
         messages.appendChild(item);
         messages.scrollTop = messages.scrollHeight;
     });
+	// Handle private chat messages
+   /* socket.on('private message', (data) => {
+        const item = document.createElement('li');
+        item.className = 'system-message';
+        item.textContent = data.message;
+        messages.appendChild(item);
+        messages.scrollTop = messages.scrollHeight;
+		//console.log('socket on contact message::', data.message);
+    });*/
 	// Handle typing events
    messageInput.addEventListener('input', () => {
      // User is typing
@@ -603,15 +644,17 @@ roomList.addEventListener('click', async function(e) {
 
 // CONTACT CLICK EVENT
 
-contactList.addEventListener('click', function(e) {
+contactList.addEventListener('click', async function(e) {
 
     const contact = e.target.closest('.indivisual-contact');
 
     if (!contact) return;
-
     selectedContactId = contact.id;
+	console.log('selected contact is: ', selectedContactId);
     openChat(contact.textContent.trim(), 'private');
-
+	socket.emit('join private chat', selectedContactId);
+	// Load group messages
+	await getGroupMessages(selectedContactId);
 });
 
 
@@ -633,10 +676,11 @@ messageForm.addEventListener('submit', async function(e) {
 	
 	let apiString = `/api/sendMessage/${selectedGroupId}`;
 	let roomString = String(selectedGroupId);
-
+	let replyToString = null;
 	if(currentChat.type == 'private') {
-		apiString = `/api/sendMessage/${selectedContactId}`;
+		apiString = `/api/sendMessageToContact/${selectedContactId}`;
 		roomString = null;
+		replyToString = selectedContactId;
 	}
 	console.log('current chat str  is:', apiString);
 	try{
@@ -649,8 +693,9 @@ messageForm.addEventListener('submit', async function(e) {
 	  body: JSON.stringify({
 		content: messageInput.value,
 		messageType: "text",
-		replyTo: null,
-		conversationType: currentChat.type
+		replyTo: replyToString,
+		conversationType: currentChat.type,
+		userName: currentUsername
 	  })
 	});
 	
@@ -662,14 +707,29 @@ messageForm.addEventListener('submit', async function(e) {
 
 //----------------------
 	const text = messageInput.value.trim();
-	
-	if (messageInput.value.trim()) {
+	console.log({
+		room: roomString,
+		conversationType: currentChat.type,
+		replyTo: replyToString,
+		message: messageInput.value
+	});
+	if (currentChat.type == 'group') {
 	 socket.emit('chat message', {
 		username: currentUsername,
 		message: messageInput.value,
 		room: roomString,
-		conversationType: currentChat.type
+		conversationType: currentChat.type,
+		replyTo: replyToString,
 	 });
+	}
+	if (currentChat.type == 'private') {
+	 socket.emit('private message', {
+		username: currentUsername,
+		message: messageInput.value,
+		conversationType: currentChat.type,
+		replyTo: replyToString,
+	 });
+	}
 	 messageInput.value = '';
 
 	 // Clear typing status
@@ -678,7 +738,7 @@ messageForm.addEventListener('submit', async function(e) {
 		typingTimeout = null;
 		socket.emit('typing', false);
 	 }
-	} 
+	 
 	}catch(error){
 	showMessage(error.message);
   }
@@ -1129,6 +1189,9 @@ function displayContacts(data) {
 			return;
 	}
 	data.users.forEach(contact => {
+	//console.log('currentUser,', currentUsername);
+	//console.log('contact.username,', contact.username);
+	if(currentUsername != contact.username){
 		const eachConact = document.createElement('li');
 
 		eachConact.className = 'indivisual-contact';
@@ -1136,7 +1199,7 @@ function displayContacts(data) {
 		eachConact.dataset.contact = contact.username;
 		eachConact.textContent = contact.username;
 		contactList.appendChild(eachConact);
-			
+	}
 	 });
 }
 // DISPLAY USERS
@@ -1218,24 +1281,34 @@ async function addtoroom(){
 
 async function getGroupMessages(selectedGroupId){
 	try {
-		const response = await fetch(`/api/group/${selectedGroupId}/getMessages`, {
+		console.log('Inside getChatMessages function of type, ', currentChat.type);
+		let apiString = `/api/group/${selectedGroupId}/getMessages`;
+		let roomString = String(selectedGroupId);
+		let replyToString = null;
+		if(currentChat.type == 'private') {
+			apiString = `/api/contact/${selectedContactId}/getMessages`;
+			roomString = null;
+			replyToString = selectedContactId;
+		}
+		const response = await fetch(apiString, {
 			method: "GET",
 			credentials: "include",
 			headers: {
 				"Content-Type": "application/json"
 			}
 		});
-
+		
 		const data = await response.json();
 		if (!response.ok) {
 			throw new Error(data.message || "Failed to fetch messages");
 		}
-
+		console.log('sucess', response);
 		if (data.success) {
 			messages.innerHTML = "";
+			console.log('Each data message', data.messages);
 			data.messages.forEach(message => {
 				showGroupMessage({
-					username: message.sender.username,
+					username: message.senderUsername,
 					message: message.content,
 					timestamp: message.createdAt
 				});
