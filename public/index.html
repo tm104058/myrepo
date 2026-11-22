@@ -139,7 +139,7 @@
         </div>
 
         <!-- CONTACTS -->
-        <div class="sidebar-section contacts-section">
+        <div class="sidebar-contacts-section">
             <h3 class="sidebar-header">Contacts<button id="invite-contact-btn" title="Create contact">＋</button></h3></h3>
 
             <ul id="contact-list" class="chat-list">
@@ -1308,6 +1308,7 @@ async function getGroupMessages(selectedGroupId){
 			console.log('Each data message', data.messages);
 			data.messages.forEach(message => {
 				showGroupMessage({
+					//username: message.sender.id, Need to fix
 					username: message.senderUsername,
 					message: message.content,
 					timestamp: message.createdAt
