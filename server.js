@@ -1,18 +1,23 @@
 
-require("dotenv").config();
+import dotenv from "dotenv";
+dotenv.config();
 
-const express = require("express");
-const http = require("http");
-const mongoose = require("mongoose");
-const session = require("express-session");
+import express from "express";
+import * as http from "http";
+import mongoose from "mongoose";
+import session from "express-session";
 //const MongoStore = require("connect-mongo");
-const bcrypt = require("bcrypt");
-const { Server } = require("socket.io");
-const MongoStoreModule = require("connect-mongo");
+import bcrypt from "bcrypt";
+import { Server } from "socket.io";
+import MongoStoreModule from "connect-mongo";
 const MongoStore = MongoStoreModule.default || MongoStoreModule;
 //File transfer
-const multer = require('multer');
+import multer from 'multer';
 
+
+// Device token
+import DeviceToken from "./config/DeviceToken.js";
+import { sendMessageNotification } from "./services/notificationService.js";
 //const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const storage = multer.memoryStorage();
 const upload = multer({
@@ -21,7 +26,7 @@ const upload = multer({
         fileSize: 25 * 1024 * 1024 //25 MB
     }
 });
-const cloudinary = require("./config/cloudinary");
+import cloudinary from "./config/cloudinary.js";
 
 const APP_BASE_URL = process.env.APP_BASE_URL;
 
@@ -70,7 +75,7 @@ const userSchema = new mongoose.Schema({
 const User = mongoose.model("User", userSchema);
 
 //MyTest
-const crypto = require("crypto");
+import crypto from "crypto";
 
 const invitationSchema = new mongoose.Schema({
   invitedBy: {
@@ -310,9 +315,58 @@ const sessionMiddleware = session({
 
 app.use(sessionMiddleware);
 
+
+
 // Share the Express session with Socket.IO.
 // Requires Socket.IO 4.6 or later.
 io.engine.use(sessionMiddleware);
+
+
+const router = express.Router();
+
+router.post("/api/devices/register", sessionMiddleware, async (req, res) => {
+
+    try {
+
+        const { token, platform } = req.body;
+
+        if (!token) {
+            return res.status(400).json({
+                success: false,
+                message: "FCM token required"
+            });
+        }
+
+        await DeviceToken.findOneAndUpdate(
+            { token },
+            {
+                userId: req.user.id,
+                token,
+                platform: platform || "android"
+            },
+            {
+                upsert: true,
+                new: true
+            }
+        );
+
+        return res.json({
+            success: true,
+            message: "Device registered successfully"
+        });
+
+    } catch (error) {
+
+        console.error(error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Device registration failed"
+        });
+    }
+});
+
+
 
 function requireLogin(req, res, next) {
   if (!req.session.user) {
@@ -419,6 +473,13 @@ app.post("/api/sendMessageToContact/:contactId", requireLogin, async(req, res, n
 			replyTo: replyTo || null,
 			conversationType: conversationType || "private"
 		});
+		
+		await sendMessageNotification({
+			receiverId: replyTo,
+			senderName: message.senderUsername,
+			message: message.content,
+			chatId: message.id
+		});
 		// Update latest message reference
 
 		// Update contact with latest 5 messages---Need to be developed
@@ -459,7 +520,7 @@ app.post("/api/sendMessage/:groupId", requireLogin, async(req, res, next) => {
 			error: "Please log in again"
 		  });
 		}
-		const { content, messageType, replyTo, conversationType} = req.body; 
+		const { content, messageType, replyTo, conversationType, userName} = req.body; 
 		const { groupId } = req.params;
 		const group = await groupsModel.findOne({
 			_id: groupId,
@@ -484,6 +545,7 @@ app.post("/api/sendMessage/:groupId", requireLogin, async(req, res, next) => {
 		const message = await messageModel.create({
 			groupId: groupId,
 			sender: userId,
+			senderUsername: userName,
 			content,
 			messageType: messageType || "text",
 			replyTo: replyTo || null,
@@ -767,7 +829,7 @@ app.post("/api/invitations", requireLogin, async (req, res, next) => {
     next(err);
   }
 });
-const path = require("path");
+import path from "path";
 // Public web page opened from an SMS invitation
 app.get("/invite/:token", (req, res) => {
   res.sendFile(
