@@ -405,9 +405,15 @@ const DeviceToken = mongoose.model("DeviceToken", deviceTokenSchema);
 // --------    Firebase JS part   START----------
 import { initializeApp, cert, getApps } from "firebase-admin/app";
 import { getMessaging } from "firebase-admin/messaging";
+import fs from "fs";
 
 // Read service account JSON from Render environment variable
-const serviceAccountJson = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+var serviceAccountJson = {};
+if (isProduction) {
+	serviceAccountJson = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+}else{
+	serviceAccountJson = JSON.parse(fs.readFileSync(process.env.FIREBASE_SERVICE_ACCOUNT_JSON, "utf8"));
+}
 
 // Avoid initializing Firebase more than once
 const firebaseApp = getApps().length 
