@@ -15,9 +15,6 @@ const MongoStore = MongoStoreModule.default || MongoStoreModule;
 import multer from 'multer';
 
 
-// Device token
-import DeviceToken from "./config/DeviceToken.js";
-import { sendMessageNotification } from "./services/notificationService.js";
 //const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const storage = multer.memoryStorage();
 const upload = multer({
@@ -69,7 +66,19 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ["user", "admin"],
     default: "user"
-  }
+  },
+  fcmTokens: [
+        {
+            token: {
+                type: String,
+                required: true
+            },
+            platform: {
+                type: String,
+                default: "android"
+            }
+        }
+    ]
 }, { timestamps: true });
 
 const User = mongoose.model("User", userSchema);
@@ -322,51 +331,6 @@ app.use(sessionMiddleware);
 io.engine.use(sessionMiddleware);
 
 
-const router = express.Router();
-
-router.post("/api/devices/register", sessionMiddleware, async (req, res) => {
-
-    try {
-
-        const { token, platform } = req.body;
-
-        if (!token) {
-            return res.status(400).json({
-                success: false,
-                message: "FCM token required"
-            });
-        }
-
-        await DeviceToken.findOneAndUpdate(
-            { token },
-            {
-                userId: req.user.id,
-                token,
-                platform: platform || "android"
-            },
-            {
-                upsert: true,
-                new: true
-            }
-        );
-
-        return res.json({
-            success: true,
-            message: "Device registered successfully"
-        });
-
-    } catch (error) {
-
-        console.error(error);
-
-        return res.status(500).json({
-            success: false,
-            message: "Device registration failed"
-        });
-    }
-});
-
-
 
 function requireLogin(req, res, next) {
   if (!req.session.user) {
@@ -407,6 +371,197 @@ async function verifyAdmin(req, res, next) {
   }
   
 }
+// -------- FIREBASE NOTIFICATION START-------------
+
+// --------    DeviceToken JS part   START----------
+const deviceTokenSchema = new mongoose.Schema({
+
+    userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        required: true,
+        index: true
+    },
+
+    token: {
+        type: String,
+        required: true,
+        unique: true
+    },
+
+    platform: {
+        type: String,
+        default: "android"
+    }
+
+}, {
+    timestamps: true
+});
+
+const DeviceToken = mongoose.model("DeviceToken", deviceTokenSchema);
+// --------    DeviceToken JS part   END----------
+
+
+// --------    Firebase JS part   START----------
+import { initializeApp, cert, getApps } from "firebase-admin/app";
+import { getMessaging } from "firebase-admin/messaging";
+
+// Read service account JSON from Render environment variable
+const serviceAccountJson = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+
+// Avoid initializing Firebase more than once
+const firebaseApp = getApps().length 
+	? getApps()[0] 
+	: initializeApp({ 
+		credential: cert(serviceAccountJson)
+    });
+
+// Initialize Firebase Cloud Messaging
+const messaging = getMessaging(firebaseApp);
+console.log("Firebase initialized:", firebaseApp.name);
+console.log("Firebase initialized_1:", messaging);
+
+
+// --------    NotificationService JS part   START------------
+
+async function sendMessageNotification({
+    receiverId,
+    senderName,
+    message,
+    chatId
+}) {
+
+    try {
+
+        const devices = await DeviceToken.find({
+            userId: receiverId,
+            platform: "android"
+        }).lean();
+
+        if (!devices.length) {
+            return;
+        }
+
+        const tokens = devices.map(device => device.token);
+
+        // Firebase multicast requests support up to 500 tokens.
+        for (let i = 0; i < tokens.length; i += 500) {
+
+            const batch = tokens.slice(i, i + 500);
+
+            const responses = await Promise.allSettled(
+                batch.map(token =>
+                    messaging.send({
+                        token,
+
+                        data: {
+                            senderName: String(senderName),
+                            message: String(message).slice(0, 1000),
+                            chatId: String(chatId)
+                        },
+
+                        android: {
+                            priority: "high",
+                            ttl: 60 * 60 * 1000
+                        }
+                    })
+                )
+            );
+
+            const invalidTokens = [];
+
+            responses.forEach((result, index) => {
+
+                if (
+                    result.status === "rejected" &&
+                    (
+                        result.reason?.code ===
+                            "messaging/registration-token-not-registered" ||
+                        result.reason?.code ===
+                            "messaging/invalid-registration-token"
+                    )
+                ) {
+                    invalidTokens.push(batch[index]);
+                }
+            });
+
+            if (invalidTokens.length) {
+                await DeviceToken.deleteMany({
+                    token: { $in: invalidTokens }
+                });
+            }
+        }
+
+    } catch (error) {
+
+        console.error("Notification error:", error);
+    }
+}
+// --------    NotificationService JS part   END------------
+
+const router = express.Router();
+
+router.post("/api/devices/register", async (req, res) => {
+
+    try {
+		// Verify Express session
+        if (!req.session || !req.session.userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Not authenticated"
+            });
+        }
+        const { token, platform } = req.body;
+
+        if (!token) {
+            return res.status(400).json({
+                success: false,
+                message: "FCM token required"
+            });
+        }
+		const userId = req.session.userId;
+		
+        /*await DeviceToken.findOneAndUpdate(
+            { token },
+            {
+                userId: req.user.id,
+                token,
+                platform: platform || "android"
+            },
+            {
+                upsert: true,
+                new: true
+            }
+        );*/
+		await User.updateOne(
+            { _id: userId },
+            {
+                $addToSet: {
+                    fcmTokens: {
+                        token,
+                        platform
+                    }
+                }
+            }
+        );
+        return res.json({
+            success: true,
+            message: "Device registered successfully"
+        });
+
+    } catch (error) {
+
+        console.error(error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Device registration failed"
+        });
+    }
+});
+
+// -------- FIREBASE NOTIFICATION END-------------
+
 //MyTest
 app.post("/api/createGroups", verifyAdmin, async(req, res, next) => {
 try{
@@ -631,7 +786,7 @@ app.get("/api/contact/:contactId/getMessages", requireLogin, async (req, res) =>
 						}
 					  }
 					]);*/
-		console.log('All messages', group);
+		//console.log('All messages', group);
 
         if (!group) {
             return res.status(403).json({
