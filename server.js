@@ -412,7 +412,7 @@ import fs from "fs";
 //if (isProduction) {
 //	serviceAccountJson = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
 //}else{
-	serviceAccountJson = JSON.parse(fs.readFileSync(process.env.FIREBASE_SERVICE_ACCOUNT_JSON, "utf8"));
+	const serviceAccountJson = JSON.parse(fs.readFileSync(process.env.FIREBASE_SERVICE_ACCOUNT_JSON, "utf8"));
 //}
 
 // Avoid initializing Firebase more than once
@@ -425,7 +425,7 @@ const firebaseApp = getApps().length
 // Initialize Firebase Cloud Messaging
 const messaging = getMessaging(firebaseApp);
 console.log("Firebase initialized:", firebaseApp.name);
-console.log("Firebase initialized_1:", messaging);
+console.log("FCM is ready.");
 
 
 // --------    NotificationService JS part   START------------
