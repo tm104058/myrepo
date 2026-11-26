@@ -1107,7 +1107,8 @@ app.post("/api/register", async (req, res, next) => {
 	  id: user._id.toString(),
 	  username: user.username
 	};
-
+	
+	req.session.userId = user._id;//Added to fix undefined userId issue android register
 	req.session.save((saveErr) => {
 	  if (saveErr) return next(saveErr);
 
@@ -1151,7 +1152,8 @@ app.post("/api/login", async (req, res, next) => {
 
     req.session.regenerate((err) => {
       if (err) return next(err);
-
+	  
+	req.session.userId = user._id;//Added to fix undefined userId issue android register
       req.session.user = {
         id: user._id.toString(),
         username: user.username
