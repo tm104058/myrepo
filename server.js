@@ -527,7 +527,7 @@ router.post("/api/devices/register", async (req, res) => {
         }
 		const userId = req.session.userId;
 		
-        /*await DeviceToken.findOneAndUpdate(
+        await DeviceToken.findOneAndUpdate(
             { token },
             {
                 userId: req.user.id,
@@ -538,7 +538,7 @@ router.post("/api/devices/register", async (req, res) => {
                 upsert: true,
                 new: true
             }
-        );*/
+        );
 		await User.updateOne(
             { _id: userId },
             {
