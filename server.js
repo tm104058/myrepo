@@ -507,6 +507,10 @@ app.post("/api/devices/register", async (req, res) => {
 
     try {
 		// Verify Express session
+		console.log("Cookie received:", !!req.headers.cookie);
+		console.log("Session ID:", req.sessionID);
+		console.log("Session:", req.session);
+		console.log("User ID:", req.session?.userId);
 		console.log("Inside device registration api, ", req.session.userId);
         if (!req.session || !req.session.userId) {
             return res.status(401).json({
