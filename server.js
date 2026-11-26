@@ -407,13 +407,9 @@ import { initializeApp, cert, getApps } from "firebase-admin/app";
 import { getMessaging } from "firebase-admin/messaging";
 import fs from "fs";
 
-// Read service account JSON from Render environment variable
-//var serviceAccountJson = {};
-//if (isProduction) {
-//	serviceAccountJson = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
-//}else{
+
 	const serviceAccountJson = JSON.parse(fs.readFileSync(process.env.FIREBASE_SERVICE_ACCOUNT_JSON, "utf8"));
-//}
+
 
 // Avoid initializing Firebase more than once
 const firebaseApp = getApps().length 
@@ -511,6 +507,7 @@ router.post("/api/devices/register", async (req, res) => {
 
     try {
 		// Verify Express session
+		console.log("Inside device registration api, ", req.session.userId);
         if (!req.session || !req.session.userId) {
             return res.status(401).json({
                 success: false,
@@ -530,15 +527,17 @@ router.post("/api/devices/register", async (req, res) => {
         await DeviceToken.findOneAndUpdate(
             { token },
             {
-                userId: req.user.id,
+                userId: userId,
                 token,
                 platform: platform || "android"
             },
             {
                 upsert: true,
-                new: true
+                new: true,
+				runValidators: true
             }
         );
+		console.log("Device saved:", DeviceToken._id);
 		await User.updateOne(
             { _id: userId },
             {
@@ -550,6 +549,7 @@ router.post("/api/devices/register", async (req, res) => {
                 }
             }
         );
+		
         return res.json({
             success: true,
             message: "Device registered successfully"
@@ -557,7 +557,7 @@ router.post("/api/devices/register", async (req, res) => {
 
     } catch (error) {
 
-        console.error(error);
+        console.error("Device registration error:", error);
 
         return res.status(500).json({
             success: false,
