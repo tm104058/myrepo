@@ -503,7 +503,7 @@ async function sendMessageNotification({
 
 const router = express.Router();
 
-router.post("/api/devices/register", async (req, res) => {
+app.post("/api/devices/register", async (req, res) => {
 
     try {
 		// Verify Express session
@@ -538,7 +538,7 @@ router.post("/api/devices/register", async (req, res) => {
             }
         );
 		console.log("Device saved:", DeviceToken._id);
-		await User.updateOne(
+		/*await User.updateOne(
             { _id: userId },
             {
                 $addToSet: {
@@ -548,10 +548,11 @@ router.post("/api/devices/register", async (req, res) => {
                     }
                 }
             }
-        );
+        );*/
 		
         return res.json({
             success: true,
+			isSucessful: true,
             message: "Device registered successfully"
         });
 
