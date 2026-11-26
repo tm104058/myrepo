@@ -524,7 +524,7 @@ app.post("/api/devices/register", async (req, res) => {
         }
 		const userId = req.session.userId;
 		
-        const savedDevice - await DeviceToken.findOneAndUpdate(
+        const savedDevice = await DeviceToken.findOneAndUpdate(
             { token },
             {
                 userId: userId,
