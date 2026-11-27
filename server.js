@@ -432,7 +432,11 @@ async function sendMessageNotification({
     message,
     chatId
 }) {
-
+	console.log("Inside sendMessageNotification-->");
+	console.log("receiverId-->", receiverId);
+	console.log("senderName-->", senderName);
+	console.log("message-->", message);
+	console.log("chatId-->", chatId);
     try {
 
         const devices = await DeviceToken.find({
