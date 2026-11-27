@@ -428,6 +428,7 @@ console.log("FCM is ready.");
 
 async function sendMessageNotification({
     receiverId,
+	notificationType,
     senderName,
     message,
     chatId
@@ -437,19 +438,32 @@ async function sendMessageNotification({
 	console.log("senderName-->", senderName);
 	console.log("message-->", message);
 	console.log("chatId-->", chatId);
+	console.log("notificationType-->", notificationType);
     try {
-
-        const devices = await DeviceToken.find({
-            userId: receiverId,
-            platform: "android"
-        }).lean();
-
-        if (!devices.length) {
-            return;
-        }
-
+		if(notificationType == 'group'){
+			const group = await Group.findById(receiverId);
+			if (!group) {
+			  throw new Error("Group not found");
+			}
+			// Extract member user IDs
+			const memberIds = group.members.map(member => member.user);
+			// Fetch all device tokens for group members
+			const devices = await DeviceToken.find({
+			  userId: { $in: memberIds },
+			  token: { $exists: true, $ne: "" }
+			});
+		}else{	
+			const devices = await DeviceToken.find({
+				userId: receiverId,
+				platform: "android"
+			}).lean();
+		}
+		console.log(devices);
+			if (!devices.length) {
+				return;
+			}
         const tokens = devices.map(device => device.token);
-
+		
         // Firebase multicast requests support up to 500 tokens.
         for (let i = 0; i < tokens.length; i += 500) {
 
@@ -724,7 +738,13 @@ app.post("/api/sendMessage/:groupId", requireLogin, async(req, res, next) => {
 			conversationType: conversationType || "group"
 		});
 		// Update latest message reference
-
+		await sendMessageNotification({
+			receiverId: groupId,
+			notificationType: "group",
+			senderName: message.senderUsername,
+			message: message.content,
+			chatId: message.id
+		});
 		// Update group with latest 5 messages
 		await groupsModel.findByIdAndUpdate(groupId, {
 		  $push: {
