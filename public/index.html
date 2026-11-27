@@ -332,6 +332,7 @@ const usernameInput = document.getElementById("username");
 const passwordInput = document.getElementById("password");
 document.getElementById("login").onclick = () => {
 	authenticate("login");
+	
 	chatWindow.hidden = false;
 	appSection.hidden = false;
 	adminSection.hidden = false;
@@ -613,7 +614,10 @@ document.getElementById('back-room-btn').addEventListener('click', function() {
 // GROUP CLICK EVENT
 
 roomList.addEventListener('click', async function(e) {
-
+	// --------      ADDED ANDROIDBRIDGE TEMPORIRALY  ------ Need to be moved to Login/Register
+	if (window.AndroidBridge) {
+        window.AndroidBridge.onUserLoggedIn();
+     }
     const group = e.target.closest('.indivisual-group');
 
     if (!group) return;
@@ -645,9 +649,13 @@ roomList.addEventListener('click', async function(e) {
 // CONTACT CLICK EVENT
 
 contactList.addEventListener('click', async function(e) {
-
+	// --------      ADDED ANDROIDBRIDGE TEMPORIRALY  ------ Need to be moved to Login/Register
+	if (window.AndroidBridge) {
+        window.AndroidBridge.onUserLoggedIn();
+     }
     const contact = e.target.closest('.indivisual-contact');
-
+	// Highlight selected group
+	document.querySelectorAll('.indivisual-contact').forEach(r => r.classList.remove('active'));
     if (!contact) return;
 	contact.classList.add('active');
     selectedContactId = contact.id;
@@ -1106,6 +1114,7 @@ async function authenticate(action) {
 	} catch (err) {
 		status.textContent = err.message;
 	}
+	
 }
 
 
