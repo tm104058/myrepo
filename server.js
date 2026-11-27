@@ -785,6 +785,23 @@ app.get("/api/contact/:contactId/getMessages", requireLogin, async (req, res) =>
                 message: "Invalid ID"
             });
         }
+		// Find latest 5 messages from this user in this group
+		const lastFive = await messageModel.find({
+			sender: userId
+		})
+		.sort({ createdAt: -1 })
+		.limit(5)
+		.select("_id")
+		.lean();
+
+		// Get IDs to keep
+		const keepIds = lastFive.map(msg => msg._id);
+
+		// Delete older messages from this user in this group
+		await messageModel.deleteMany({
+			sender: userId,
+			_id: { $nin: keepIds }
+		});
 		
        const group = await messageModel.find({
 			conversationType: "private",
@@ -802,30 +819,6 @@ app.get("/api/contact/:contactId/getMessages", requireLogin, async (req, res) =>
 		
 		console.log('userId is , ', userId);
 		console.log('contactId is , ', contactId);
-		/*const group = await messageModel.aggregate([
-					  {
-						$match: {
-						  conversationType: "private",
-						  sender: {
-							$in: [userId, contactId]
-						  }
-						}
-					  },
-					  {
-						$sort: {
-						  createdAt: -1
-						}
-					  },
-					  {
-						$limit: 5
-					  },
-					  {
-						$sort: {
-						  createdAt: 1
-						}
-					  }
-					]);*/
-		//console.log('All messages', group);
 
         if (!group) {
             return res.status(403).json({
