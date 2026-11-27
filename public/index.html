@@ -660,6 +660,12 @@ contactList.addEventListener('click', async function(e) {
 	contact.classList.add('active');
     selectedContactId = contact.id;
 	console.log('selected contact is: ', selectedContactId);
+	if (isMobileBrowser()){// || window.innerWidth <= 768) {
+	console.log('Which browser detected?');
+		document.querySelector('.chat-app').classList.add('chat-open');
+		document.getElementById('chat-sidebar').hidden = true;
+
+    }
     openChat(contact.textContent.trim(), 'private');
 	socket.emit('join private chat', selectedContactId);
 	// Load group messages
