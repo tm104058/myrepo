@@ -523,7 +523,9 @@ app.post("/api/devices/register", async (req, res) => {
             });
         }
         const { token, platform } = req.body;
-
+		if(token == "234456789"){//-- Testing
+			return;
+		}
         if (!token) {
             return res.status(400).json({
                 success: false,
