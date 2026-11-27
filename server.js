@@ -433,12 +433,12 @@ async function sendMessageNotification({
     message,
     chatId
 }) {
-	console.log("Inside sendMessageNotification-->");
-	console.log("receiverId-->", receiverId);
-	console.log("senderName-->", senderName);
-	console.log("message-->", message);
-	console.log("chatId-->", chatId);
-	console.log("notificationType-->", notificationType);
+	//console.log("Inside sendMessageNotification-->");
+	//console.log("receiverId-->", receiverId);
+	//console.log("senderName-->", senderName);
+	//console.log("message-->", message);
+	//console.log("chatId-->", chatId);
+	//console.log("notificationType-->", notificationType);
     try {
 		let devices = [];
 		if(notificationType == 'group'){
@@ -453,7 +453,7 @@ async function sendMessageNotification({
 			  userId: { $in: memberIds },
 			  token: { $exists: true, $ne: "" }
 			});
-			console.log(devices);
+			//console.log(devices);
 		}else{	
 			devices = await DeviceToken.find({
 				userId: receiverId,
@@ -527,11 +527,11 @@ app.post("/api/devices/register", async (req, res) => {
 
     try {
 		// Verify Express session
-		console.log("Cookie received:", !!req.headers.cookie);
-		console.log("Session ID:", req.sessionID);
-		console.log("Session:", req.session);
-		console.log("User ID:", req.session?.userId);
-		console.log("Inside device registration api, ", req.session.userId);
+		//console.log("Cookie received:", !!req.headers.cookie);
+		//console.log("Session ID:", req.sessionID);
+		//console.log("Session:", req.session);
+		//console.log("User ID:", req.session?.userId);
+		//console.log("Inside device registration api, ", req.session.userId);
         if (!req.session || !req.session.userId) {
             return res.status(401).json({
                 success: false,
