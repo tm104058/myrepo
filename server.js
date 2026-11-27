@@ -440,6 +440,7 @@ async function sendMessageNotification({
 	console.log("chatId-->", chatId);
 	console.log("notificationType-->", notificationType);
     try {
+		let devices = [];
 		if(notificationType == 'group'){
 			const group = await groupsModel.findById(receiverId);
 			if (!group) {
@@ -448,17 +449,18 @@ async function sendMessageNotification({
 			// Extract member user IDs
 			const memberIds = group.members.map(member => member.user);
 			// Fetch all device tokens for group members
-			const devices = await DeviceToken.find({
+			devices = await DeviceToken.find({
 			  userId: { $in: memberIds },
 			  token: { $exists: true, $ne: "" }
 			});
+			console.log(devices);
 		}else{	
-			const devices = await DeviceToken.find({
+			devices = await DeviceToken.find({
 				userId: receiverId,
 				platform: "android"
 			}).lean();
 		}
-		console.log(devices);
+		
 			if (!devices.length) {
 				return;
 			}
