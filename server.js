@@ -441,7 +441,7 @@ async function sendMessageNotification({
 	console.log("notificationType-->", notificationType);
     try {
 		if(notificationType == 'group'){
-			const group = await Group.findById(receiverId);
+			const group = await groupsModel.findById(receiverId);
 			if (!group) {
 			  throw new Error("Group not found");
 			}
