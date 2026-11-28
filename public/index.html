@@ -305,6 +305,7 @@ const auth = document.getElementById("auth");
 const appSection = document.getElementById("chat-app");
 const roomList = document.getElementById('room-list');
 const contactList = document.getElementById('contact-list');
+const inviteStatus = document.getElementById('invite-status');
 
 const chatWelcome = document.getElementById('chat-welcome');
 const chatWindow = document.getElementById('chat-window');
@@ -962,6 +963,7 @@ fileInput.addEventListener('change', async (event) => {
 			if (socket.connected) {
 				socket.timeout(10000).emit("chat message",{
 				username: currentUsername,
+				messageType: 'group',
 				message: fileMsgToChat,
 				room: String(selectedGroupId)
 				},
@@ -1004,8 +1006,7 @@ fileInput.addEventListener('change', async (event) => {
 // INVITE CONTACT
 // ====================================
 
-document.getElementById('invite-contact-btn')
-.addEventListener('click', function() {
+document.getElementById('invite-contact-btn').addEventListener('click', function() {
 
     if (
       !window.AndroidBridge ||
